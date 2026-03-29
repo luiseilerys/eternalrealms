@@ -11,7 +11,7 @@ import {
 import { 
     addMessage, createRealmButtons, getSelectedRealm, quickCommand,
     initUIListeners, setWelcomeVisible, clearChat, getInputValue, 
-    clearInput, getPlayerNameInput, getSelectedClass 
+    clearInput
 } from './ui.js';
 
 // ✅ INICIALIZACIÓN SEGURA DE WEBXDC
@@ -54,8 +54,6 @@ export function handleQuickCommand(cmd) {
  * Inicia el juego con las opciones seleccionadas
  */
 export function startGame() {
-    const playerName = getPlayerNameInput();
-    const playerClass = getSelectedClass();
     const selectedRealm = getSelectedRealm() || 'Aetherion';
 
     let isNewGame = false;
@@ -64,10 +62,12 @@ export function startGame() {
         resetToNewHero();
         isNewGame = true;
         
-        // Aplicar selección del usuario para nuevo personaje
+        // Asignar clase y nombre automáticamente para nuevo personaje
         const player = getPlayer();
-        player.name = playerName;
-        player.class = playerClass;
+        const classes = ['Arcane Weaver', 'Shadowblade', 'Stormcaller', 'Verdant Warden', 'Rune Knight'];
+        const names = ['Elyndor', 'Thalindra', 'Kaelith', 'Miraelyn', 'Feyrann'];
+        player.name = names[Math.floor(Math.random() * names.length)];
+        player.class = classes[Math.floor(Math.random() * classes.length)];
         player.realm = selectedRealm;
         setPlayer(player);
     }
