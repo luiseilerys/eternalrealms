@@ -37,6 +37,11 @@ export function createRealmButtons() {
             document.querySelectorAll('.realm-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
         };
+        // Seleccionar primer reino por defecto
+        if (!grid.dataset.selectedRealm) {
+            grid.dataset.selectedRealm = r;
+            btn.classList.add('selected');
+        }
         grid.appendChild(btn);
     });
 }
@@ -102,6 +107,24 @@ export function initUIListeners(sendCommandFn) {
             timerElement.style.display = 'none';
         }
     }, 500);
+    
+    // Actualizar estado del botón de inicio según selección de reino
+    setInterval(() => {
+        const startBtn = document.getElementById('start-btn');
+        const grid = document.getElementById('realm-grid');
+        if (startBtn && grid) {
+            const selectedRealm = grid.dataset.selectedRealm;
+            if (selectedRealm) {
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+            } else {
+                startBtn.disabled = true;
+                startBtn.style.opacity = '0.6';
+                startBtn.style.cursor = 'not-allowed';
+            }
+        }
+    }, 300);
 }
 
 /**
