@@ -141,6 +141,19 @@ function updateActionTimer() {
 }
 
 /**
+ * Reinicia el juego al estado inicial
+ */
+export function resetGame() {
+    if (confirm('¿Estás seguro de que quieres reiniciar el juego? Todo tu progreso se perderá.')) {
+        // Limpiar localStorage
+        localStorage.removeItem('eternalRealmsPlayer');
+        
+        // Recargar la página para volver al estado inicial
+        window.location.reload();
+    }
+}
+
+/**
  * Inicialización principal al cargar la página
  */
 function init() {
@@ -158,6 +171,7 @@ function init() {
     window.quickCommand = handleQuickCommand;
     window.startGame = startGame;
     window.saveProgress = saveProgress;
+    window.resetGame = resetGame;
 
     // Verificar si hay progreso guardado
     if (loadProgress()) {
