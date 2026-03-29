@@ -1,157 +1,127 @@
 # Eternal Realms
 
-Un juego de rol (RPG) multijugador basado en navegador, diseñado como aplicación **webxdc** para integración con plataformas de mensajería como Delta Chat.
+A multiplayer RPG (Role-Playing Game) built as a webxdc application, designed to run in browsers and messaging platforms that support the webxdc standard (such as Delta Chat).
 
-## 🎮 Características
+## Features
 
-- **Sistema de Personaje**: Estadísticas completas (Nivel, XP, Oro, Energía, Maná, HP, Ataque, Defensa)
-- **Progresión**: Sistema de niveles con multiplicadores y bonus cada 5 niveles
-- **Equipamiento**: 5 tiers de items (Común → Legendario) con 30 objetos únicos
-- **Combate y Exploración**: Misiones, mazmorras y encuentros aleatorios
-- **Economía**: Sistema de oro con tienda de mercaderes
-- **Multijugador**: Estado global compartido y notificaciones en tiempo real vía webxdc
-- **Persistencia**: Auto-guardado automático del progreso
-- **5 Reinos y 5 Clases**: Personalización inicial del personaje
+- 🎮 **Classic RPG Mechanics**: Level up, gain XP, collect gold, and manage energy
+- ⚔️ **Equipment System**: 30 unique items across 5 rarity tiers (Common to Legendary)
+- 🌍 **Multiple Kingdoms**: Choose from 5 distinct realms with unique identities
+- 🧙 **Character Classes**: 5 specialized classes with different playstyles
+- 💾 **Persistent Progress**: Auto-save functionality using localStorage
+- 🌐 **Multiplayer Support**: Real-time notifications and shared global state via webxdc
+- 📱 **Responsive Design**: Optimized for both desktop and mobile devices
+- 💬 **Command-Based Interface**: Intuitive chat-style command system
 
-## 🏗️ Estructura del Proyecto
+## Project Structure
 
 ```
 eternalrealms/
-├── index.html          # Estructura HTML principal
+├── index.html          # Main HTML structure
 ├── css/
-│   └── styles.css      # Estilos y diseño responsive
+│   └── styles.css      # All styling rules
 ├── js/
-│   ├── config.js       # Configuración, datos de items y constantes
-│   ├── game.js         # Lógica del juego y comandos
-│   ├── ui.js           # Gestión de interfaz de usuario
-│   └── main.js         # Punto de entrada y coordinación
-└── README.md           # Documentación
+│   ├── config.js       # Game configuration, items, constants
+│   ├── game.js         # Core game logic and command processing
+│   ├── ui.js           # UI rendering and management
+│   └── main.js         # Application entry point and initialization
+└── README.md           # This file
 ```
 
-## 🚀 Comandos Disponibles
+## Available Commands
 
-| Comando | Descripción | Costo |
-|---------|-------------|-------|
-| `/me` | Ver estadísticas del personaje | - |
-| `/quest` | Explorar territorios | 1 Energía |
-| `/dungeon` | Entrar a mazmorra | 3 Energía |
-| `/rest` | Restaurar HP y energía | - |
-| `/equip` | Ver equipo e inventario | - |
-| `/equip N` | Equipar item número N | - |
-| `/merchant` | Ver tienda del mercader | - |
-| `/buy N` | Comprar item del mercader | Oro variable |
-| `/world` | Ver estado global compartido | - |
-| `/help` | Mostrar lista de comandos | - |
-| `/reset` | Reiniciar personaje | ⚠️ Borra progreso |
+| Command | Description | Cost |
+|---------|-------------|------|
+| `/me` | View character statistics | Free |
+| `/quest` | Explore and find rewards | 1 Energy |
+| `/dungeon` | Challenge dungeons for better loot | 3 Energy |
+| `/rest` | Restore HP and energy to maximum | Free |
+| `/equip` | View current equipment and inventory | Free |
+| `/equip N` | Equip item number N from inventory | Free |
+| `/merchant` | View merchant's available items | Free |
+| `/buy N` | Purchase item number N from merchant | Gold |
+| `/world` | View global shared state | Free |
+| `/help` | Display command help | Free |
+| `/reset` | Reset character progress | - |
 
-## 🎯 Mecánicas de Juego
+## Installation & Usage
 
-### Sistema de Combate
-- **Quest**: 40% tasa de éxito, 5% chance de encontrar mercader
-- **Dungeon**: 10% tasa de drop de items, mayor riesgo/recompensa
-- **Descanso**: Restaura HP y energía al máximo
+### Standard Web Mode
+Simply open `index.html` in any modern web browser. The game will run in standalone mode with local storage persistence.
 
-### Tiers de Equipamiento
-1. **Común** (Gris) - Stats básicos
-2. **Poco Común** (Verde) - Stats mejorados
-3. **Raro** (Azul) - Stats superiores
-4. **Épico** (Morado) - Stats excepcionales
-5. **Legendario** (Dorado) - Stats máximos
+### Webxdc Mode
+For full multiplayer functionality, deploy as a webxdc app in a compatible platform like Delta Chat.
 
-### Reinos Disponibles
-- 🌟 **Aetherion** - Reino de los cielos
-- 🌲 **Sylvandar** - Bosques ancestrales
-- 🖤 **Obsidian Reach** - Tierras oscuras
-- ✨ **Celestara** - Dominio celestial
-- 🔥 **Emberforge** - Forjas ardientes
+### Development
+No build process required. The project uses vanilla JavaScript ES6 modules. Just serve the files with any local server:
 
-### Clases Disponibles
-- 🔮 **Arcane Weaver** - Maestro de las artes arcanas
-- 🗡️ **Shadowblade** - Asesino de las sombras
-- ⚡ **Stormcaller** - Invocador de tormentas
-- 🌿 **Verdant Warden** - Guardián de la naturaleza
-- 🛡️ **Rune Knight** - Caballero rúnico
-
-## 💻 Instalación y Uso
-
-### Como Aplicación Web Estándar
-1. Clona el repositorio
-2. Abre `index.html` en cualquier navegador moderno
-3. ¡Comienza a jugar!
-
-### Como Aplicación webxdc (Delta Chat)
-1. Empaqueta los archivos en un `.zip`
-2. Renombra a `.xdc`
-3. Envía como adjunto en Delta Chat
-4. Los jugadores pueden interactuar desde la app
-
-## 🔧 Desarrollo
-
-El proyecto está construido con:
-- **HTML5** - Estructura semántica
-- **CSS3** - Diseño responsive con Flexbox
-- **JavaScript ES6+** - Módulos nativos, sin frameworks
-- **localStorage** - Persistencia de datos
-- **webxdc API** - Funcionalidad multijugador
-
-### Ejecutar en Desarrollo
 ```bash
-# Usar un servidor local para evitar restricciones de CORS
-npx serve .
-# o
-python3 -m http.server 8000
+# Using Python
+python -m http.server 8000
+
+# Using Node.js
+npx serve
 ```
 
-## 📁 Arquitectura de Código
+Then open `http://localhost:8000` in your browser.
 
-- **config.js**: Datos estáticos (items, reinos, clases, constantes)
-- **game.js**: Lógica de negocio (combate, progresión, economía)
-- **ui.js**: Renderizado y manipulación del DOM
-- **main.js**: Inicialización y coordinación de módulos
+## Code Architecture
 
-## 🌐 Multijugador
+The codebase is modularized using ES6 modules for better maintainability:
 
-El juego utiliza la API **webxdc** para:
-- Notificar subidas de nivel de otros jugadores
-- Compartir descubrimientos de mercaderes
-- Mantener un estado global (Esencia, Guardianes)
-- Sincronizar eventos entre participantes
+- **config.js**: Contains all game data including items (weapons and armor), kingdoms, classes, drop rates, and game constants. Easy to modify for balancing or adding new content.
+- **game.js**: Implements core game mechanics including command parsing, combat calculations, leveling system, economy, and inventory management.
+- **ui.js**: Handles all DOM manipulation, message rendering, screen transitions, and dynamic UI updates. Separates presentation logic from game logic.
+- **main.js**: Application entry point that initializes the game state, handles webxdc integration, sets up event listeners, and coordinates between modules.
 
-*Nota: En modo standalone (sin webxdc), el juego funciona completamente pero sin características multijugador.*
+## Multiplayer Functionality
 
-## 💾 Persistencia
+When running in a webxdc-compatible environment, the game enables:
+- Real-time notifications when other players level up
+- Alerts when merchants appear for other players
+- Shared global state including total essence and active guardians
+- Player join notifications
 
-- Auto-guardado automático al cambiar de pestaña
-- Guardado manual después de acciones importantes
-- Datos almacenados en `localStorage` del navegador
-- Key: `eternalRealmsSave`
+In standalone mode (regular browser), these features are disabled but the game remains fully playable.
 
-## 🎨 Diseño UI/UX
+## Persistence
 
-- Tema oscuro moderno (#0a0f1a, #1e2937, #a78bfa)
-- Interfaz tipo chat para inmersión
-- Barra de acceso rápido con botones
-- Colores por tier de items
-- Timestamps en todos los mensajes
-- Totalmente responsive (móvil y desktop)
+Player progress is automatically saved to localStorage on:
+- Every significant action (level up, purchase, equipment change)
+- When the page loses visibility (visibilitychange event)
+- When closing the application
 
-## 📝 Licencia
+Data includes: character stats, inventory, equipped items, gold, kingdom/class selection, and merchant stock.
 
-MIT License - Siéntete libre de usar, modificar y distribuir.
+## UI/UX Design
 
-## 🤝 Contribuciones
+- **Dark Theme**: Modern color palette optimized for extended play sessions
+- **Chat Interface**: Familiar command-based interaction style
+- **Quick Access Bar**: Buttons for frequently used commands
+- **Color-Coded Items**: Visual rarity indicators (Gray → Green → Blue → Purple → Gold)
+- **Timestamped Messages**: All game events include timestamps for tracking
+- **Responsive Layout**: Adapts seamlessly to different screen sizes
 
-Las contribuciones son bienvenidas. Por favor:
-1. Fork el repositorio
-2. Crea una rama para tu feature
-3. Commit tus cambios
-4. Push a la rama
-5. Abre un Pull Request
+## Technologies Used
 
-## 📞 Soporte
+- HTML5
+- CSS3 (Flexbox, Custom Properties)
+- Vanilla JavaScript (ES6 Modules)
+- Web Storage API (localStorage)
+- WebXDC API (optional)
 
-Para issues o preguntas, abre un issue en el repositorio.
+## License
 
----
+MIT License - Feel free to use, modify, and distribute.
 
-**¡Que comience la aventura en Eternal Realms!** ⚔️🛡️✨
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Support
+
+For issues, questions, or suggestions, please open an issue in the repository.
