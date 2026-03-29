@@ -70,6 +70,13 @@ export function startGame() {
         player.class = playerClass;
         player.realm = selectedRealm;
         setPlayer(player);
+    } else {
+        // Si ya existe progreso, actualizar con las selecciones actuales del usuario
+        const player = getPlayer();
+        player.name = playerName;
+        player.class = playerClass;
+        player.realm = selectedRealm;
+        setPlayer(player);
     }
 
     setWelcomeVisible(false);
