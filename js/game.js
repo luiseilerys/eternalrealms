@@ -7,7 +7,8 @@ import {
     tierConfig, possibleWeapons, possibleArmors, 
     questFlavors, emptyQuestFlavors, merchantNames,
     getTierColor, getTierName, createInitialPlayer, initialWorldState,
-    dungeonBosses, worldEvents, eventRewards
+    dungeonBosses, worldEvents, eventRewards,
+    MAX_INVENTORY_SIZE, FUSION_RECIPES, DISENCHANT_VALUES, CRAFTING_RECIPES
 } from './config.js';
 
 // Estado del jugador
@@ -92,10 +93,22 @@ export function showEquipment(addMessage) {
     msg += `⚔️ Arma: <span style="color:${getTierColor(myPlayer.weapon.tier)}">${myPlayer.weapon.name}</span> [${weaponTierName}] (+${myPlayer.weapon.atk} Ataque)<br>`;
     msg += `🛡️ Armadura: <span style="color:${getTierColor(myPlayer.armor.tier)}">${myPlayer.armor.name}</span> [${armorTierName}] (+${myPlayer.armor.def} Defensa)<br><br>`;
     
+    // Mostrar esencia y buffs
+    msg += `✨ Esencia Mágica: ${myPlayer.essence}<br>`;
+    if (myPlayer.activeBuffs.length > 0) {
+        msg += '🔮 <strong>Buffs Activos:</strong><br>';
+        myPlayer.activeBuffs.forEach(buff => {
+            msg += `   • ${buff.name} (${buff.remaining} acciones restantes)<br>`;
+        });
+    }
+    msg += '<br>';
+    
+    // Mostrar límite de inventario
+    msg += `🎒 <strong>Inventario:</strong> (${myPlayer.inventory.length}/${MAX_INVENTORY_SIZE})<br>`;
+    
     if (myPlayer.inventory.length === 0) {
         msg += '<em>Inventario vacío</em>';
     } else {
-        msg += '🎒 <strong>Inventario:</strong><br>';
         myPlayer.inventory.forEach((item, i) => {
             const type = item.atk !== undefined ? '⚔️' : '🛡️';
             const bonus = item.atk !== undefined ? `+${item.atk} Ataque` : `+${item.def} Defensa`;
@@ -108,6 +121,12 @@ export function showEquipment(addMessage) {
             msg += '<br>';
         });
     }
+    
+    msg += '<br><strong>Comandos de Crafteo:</strong><br>';
+    msg += '/fuse N1 N2 N3 — Fusionar 3 items<br>';
+    msg += '/disenchant N — Destruir item por esencia<br>';
+    msg += '/craft — Ver recetas disponibles<br>';
+    msg += '/use N — Usar consumible (poción/buff)';
     
     addMessage(msg);
 }
@@ -219,6 +238,10 @@ export function processCommand(cmd, addMessage, safeSendUpdate, isWebxdc) {
                   '/merchant — Ver mercader actual<br>' +
                   '/buy N — Comprar ítem del mercader<br>' +
                   '/world — Ver estado global<br>' +
+                  '/fuse N1 N2 N3 — Fusionar 3 items para crear uno mejor<br>' +
+                  '/disenchant N — Destruir item por esencia mágica<br>' +
+                  '/craft — Ver recetas de crafteo<br>' +
+                  '/use N — Usar consumible (poción/buff)<br>' +
                   '/help — Esta ayuda<br><br>' +
                   '<strong>Sistema de Tiers:</strong><br>' +
                   '<span style="color:#94a3b8">⚪ Común</span> | ' +
@@ -226,6 +249,21 @@ export function processCommand(cmd, addMessage, safeSendUpdate, isWebxdc) {
                   '<span style="color:#3b82f6">🔵 Raro</span> | ' +
                   '<span style="color:#a855f7">🟣 Épico</span> | ' +
                   '<span style="color:#f59e0b">🟠 Legendario</span>');
+    }
+    else if (lower.startsWith('/fuse')) {
+        processFusion(lower, addMessage);
+    }
+    else if (lower.startsWith('/disenchant')) {
+        processDisenchant(lower, addMessage);
+    }
+    else if (lower === '/craft') {
+        showCraftingRecipes(addMessage);
+    }
+    else if (lower.startsWith('/craft ')) {
+        processCrafting(lower, addMessage);
+    }
+    else if (lower.startsWith('/use ')) {
+        processUseItem(lower, addMessage);
     }
     else if (lower === '/reset') {
         addMessage('⚠️ <strong>Reiniciando personaje...</strong><br>Se borrará todo el progreso.');
@@ -316,18 +354,25 @@ function processQuest(addMessage, safeSendUpdate, isWebxdc) {
 
         // 5% chance de drop
         if (Math.random() < 0.05) {
-            if (Math.random() < 0.55) {
-                const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
-                myPlayer.inventory.push(newWeapon);
-                const tierColor = getTierColor(newWeapon.tier);
-                const tierName = getTierName(newWeapon.tier);
-                addMessage(`⚔️ ¡Encontraste un arma! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}] (+${newWeapon.atk} Ataque)`);
+            // Verificar límite de inventario
+            if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+                addMessage(`🎒 <strong>¡Mochila llena!</strong><br>` +
+                          `Tienes ${myPlayer.inventory.length}/${MAX_INVENTORY_SIZE} objetos.<br>` +
+                          `No puedes recoger el item. Usa /fuse o /disenchant para liberar espacio.`);
             } else {
-                const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
-                myPlayer.inventory.push(newArmor);
-                const tierColor = getTierColor(newArmor.tier);
-                const tierName = getTierName(newArmor.tier);
-                addMessage(`🛡️ ¡Encontraste una armadura! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}] (+${newArmor.def} Defensa)`);
+                if (Math.random() < 0.55) {
+                    const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
+                    myPlayer.inventory.push(newWeapon);
+                    const tierColor = getTierColor(newWeapon.tier);
+                    const tierName = getTierName(newWeapon.tier);
+                    addMessage(`⚔️ ¡Encontraste un arma! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}] (+${newWeapon.atk} Ataque)`);
+                } else {
+                    const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
+                    myPlayer.inventory.push(newArmor);
+                    const tierColor = getTierColor(newArmor.tier);
+                    const tierName = getTierName(newArmor.tier);
+                    addMessage(`🛡️ ¡Encontraste una armadura! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}] (+${newArmor.def} Defensa)`);
+                }
             }
         }
 
@@ -386,18 +431,25 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
 
     // 10% chance de drop normal
     if (Math.random() < 0.10) {
-        if (Math.random() < 0.5) {
-            const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
-            myPlayer.inventory.push(newWeapon);
-            const tierColor = getTierColor(newWeapon.tier);
-            const tierName = getTierName(newWeapon.tier);
-            addMessage(`⚔️ ¡Encontraste un arma en la mazmorra! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}]`);
+        // Verificar límite de inventario
+        if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+            addMessage(`🎒 <strong>¡Mochila llena!</strong><br>` +
+                      `Tienes ${myPlayer.inventory.length}/${MAX_INVENTORY_SIZE} objetos.<br>` +
+                      `No puedes recoger el item. Usa /fuse o /disenchant para liberar espacio.`);
         } else {
-            const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
-            myPlayer.inventory.push(newArmor);
-            const tierColor = getTierColor(newArmor.tier);
-            const tierName = getTierName(newArmor.tier);
-            addMessage(`🛡️ ¡Encontraste una armadura en la mazmorra! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}]`);
+            if (Math.random() < 0.5) {
+                const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
+                myPlayer.inventory.push(newWeapon);
+                const tierColor = getTierColor(newWeapon.tier);
+                const tierName = getTierName(newWeapon.tier);
+                addMessage(`⚔️ ¡Encontraste un arma en la mazmorra! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}]`);
+            } else {
+                const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
+                myPlayer.inventory.push(newArmor);
+                const tierColor = getTierColor(newArmor.tier);
+                const tierName = getTierName(newArmor.tier);
+                addMessage(`🛡️ ¡Encontraste una armadura en la mazmorra! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}]`);
+            }
         }
     }
     
@@ -478,6 +530,14 @@ function processBuyItem(cmd, addMessage) {
 
         if (myPlayer.gold < item.price) {
             addMessage(`❌ <strong>¡No tienes suficientes cristales!</strong> Necesitas ${item.price} 💎 pero tienes ${myPlayer.gold} 💎`);
+            return;
+        }
+
+        // Verificar límite de inventario
+        if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+            addMessage(`🎒 <strong>¡Mochila llena!</strong><br>` +
+                      `Tienes ${myPlayer.inventory.length}/${MAX_INVENTORY_SIZE} objetos.<br>` +
+                      `Libera espacio antes de comprar.`);
             return;
         }
 
@@ -626,14 +686,20 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
                     dropItem = {...pool[Math.floor(Math.random() * pool.length)]};
                 }
                 
-                myPlayer.inventory.push(dropItem);
-                const tierColor = getTierColor(dropItem.tier);
-                const tierName = getTierName(dropItem.tier);
-                const type = dropItem.atk !== undefined ? '⚔️' : '🛡️';
-                const bonus = dropItem.atk !== undefined ? `+${dropItem.atk} Ataque` : `+${dropItem.def} Defensa`;
-                
-                msg += `<br>🎁 <strong>¡DROP LEGENDARIO!</strong><br>`;
-                msg += `<span style="color:${tierColor}">${type} ${dropItem.name}</span> [${tierName}] - ${bonus}`;
+                // Verificar límite de inventario para drop de jefe
+                if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+                    msg += `<br>🎒 <strong>¡Mochila llena!</strong><br>`;
+                    msg += `Perdiste el item legendario por no tener espacio.`;
+                } else {
+                    myPlayer.inventory.push(dropItem);
+                    const tierColor = getTierColor(dropItem.tier);
+                    const tierName = getTierName(dropItem.tier);
+                    const type = dropItem.atk !== undefined ? '⚔️' : '🛡️';
+                    const bonus = dropItem.atk !== undefined ? `+${dropItem.atk} Ataque` : `+${dropItem.def} Defensa`;
+                    
+                    msg += `<br>🎁 <strong>¡DROP LEGENDARIO!</strong><br>`;
+                    msg += `<span style="color:${tierColor}">${type} ${dropItem.name}</span> [${tierName}] - ${bonus}`;
+                }
             }
             
             // Notificación mundial
@@ -784,15 +850,22 @@ function completeWorldEvent(addMessage, safeSendUpdate, isWebxdc) {
     // Dar recompensa basada en participación (simplificado: todos reciben algo)
     const rewardType = Math.random() < 0.5 ? 'common' : 'rare';
     const reward = {...eventRewards[event.eventType][rewardType]};
-    myPlayer.inventory.push(reward);
     
-    const tierColor = getTierColor(reward.tier);
-    const tierName = getTierName(reward.tier);
-    const type = reward.atk !== undefined ? '⚔️' : '🛡️';
-    const bonus = reward.atk !== undefined ? `+${reward.atk} Ataque` : `+${reward.def} Defensa`;
-    
-    addMessage(`<br>🎁 <strong>Recompensa de Evento:</strong><br>` +
-              `<span style="color:${tierColor}">${type} ${reward.name}</span> [${tierName}] - ${bonus}`);
+    // Verificar límite de inventario para recompensa de evento
+    if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+        addMessage(`🎒 <strong>¡Mochila llena!</strong><br>` +
+                  `Perdiste la recompensa del evento por no tener espacio.`);
+    } else {
+        myPlayer.inventory.push(reward);
+        
+        const tierColor = getTierColor(reward.tier);
+        const tierName = getTierName(reward.tier);
+        const type = reward.atk !== undefined ? '⚔️' : '🛡️';
+        const bonus = reward.atk !== undefined ? `+${reward.atk} Ataque` : `+${reward.def} Defensa`;
+        
+        addMessage(`<br>🎁 <strong>Recompensa de Evento:</strong><br>` +
+                  `<span style="color:${tierColor}">${type} ${reward.name}</span> [${tierName}] - ${bonus}`);
+    }
     
     if (isWebxdc) {
         safeSendUpdate(
@@ -865,4 +938,283 @@ export function getCurrentMerchant() {
 
 export function setCurrentMerchant(merchant) {
     currentMerchant = merchant;
+}
+
+/**
+ * Procesa la fusión de 3 items del mismo tier
+ */
+function processFusion(cmd, addMessage) {
+    const parts = cmd.trim().split(/\s+/);
+    
+    if (parts.length !== 4) {
+        addMessage('❌ <strong>Uso incorrecto:</strong><br>/fuse N1 N2 N3<br>Fusiona 3 items del mismo tier para crear uno de tier superior.');
+        return;
+    }
+    
+    const indices = [parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3])].sort((a, b) => a - b);
+    
+    // Validar índices
+    for (let idx of indices) {
+        if (isNaN(idx) || idx < 1 || idx > myPlayer.inventory.length) {
+            addMessage(`❌ Índice inválido: ${idx}. El inventario tiene ${myPlayer.inventory.length} items.`);
+            return;
+        }
+    }
+    
+    // Verificar que no haya índices repetidos
+    if (indices[0] === indices[1] || indices[1] === indices[2]) {
+        addMessage('❌ Debes seleccionar 3 items diferentes.');
+        return;
+    }
+    
+    // Obtener los items
+    const item1 = myPlayer.inventory[indices[0] - 1];
+    const item2 = myPlayer.inventory[indices[1] - 1];
+    const item3 = myPlayer.inventory[indices[2] - 1];
+    
+    // Verificar que sean del mismo tier
+    if (item1.tier !== item2.tier || item2.tier !== item3.tier) {
+        addMessage('❌ Los 3 items deben ser del mismo tier para fusionarlos.');
+        return;
+    }
+    
+    // Determinar receta de fusión
+    let recipe = null;
+    if (item1.tier === 'comun') recipe = FUSION_RECIPES.comun_to_poco_comun;
+    else if (item1.tier === 'poco-comun') recipe = FUSION_RECIPES.poco_comun_to_raro;
+    else if (item1.tier === 'raro') recipe = FUSION_RECIPES.raro_to_epico;
+    else if (item1.tier === 'epico') recipe = FUSION_RECIPES.epico_to_legendario;
+    else {
+        addMessage('❌ No se pueden fusionar items legendarios (ya son el tier máximo).');
+        return;
+    }
+    
+    // Verificar espacio en inventario después de la fusión
+    // Se eliminan 3 items y se añade 1 = -2 slots netos, siempre hay espacio
+    
+    // Eliminar los items del inventario (en orden inverso para no afectar índices)
+    myPlayer.inventory.splice(indices[2] - 1, 1);
+    myPlayer.inventory.splice(indices[1] - 1, 1);
+    myPlayer.inventory.splice(indices[0] - 1, 1);
+    
+    // Intentar fusión
+    const success = Math.random() < recipe.successRate;
+    const tierName = getTierName(item1.tier);
+    const nextTierName = getTierName(recipe.resultTier);
+    
+    if (success) {
+        // Crear item de tier superior
+        const isWeapon = item1.atk !== undefined;
+        const pool = isWeapon ? possibleWeapons : possibleArmors;
+        const filteredPool = pool.filter(item => 
+            item.tier === recipe.resultTier && 
+            item.minLevel <= myPlayer.level + 5
+        );
+        
+        if (filteredPool.length > 0) {
+            const newItem = {...filteredPool[Math.floor(Math.random() * filteredPool.length)]};
+            myPlayer.inventory.push(newItem);
+            const tierColor = getTierColor(newItem.tier);
+            const bonus = newItem.atk !== undefined ? `+${newItem.atk} Ataque` : `+${newItem.def} Defensa`;
+            addMessage(`✨ <strong>¡Fusión Exitosa!</strong><br>` +
+                      `3 items [${tierName}] → <span style="color:${tierColor}">${newItem.name}</span> [${nextTierName}]<br>` +
+                      `${bonus}`);
+        } else {
+            // Si no hay items disponibles, devolver esencia
+            const essenceRefund = DISENCHANT_VALUES[item1.tier] * 3;
+            myPlayer.essence += essenceRefund;
+            addMessage(`✨ <strong>¡Fusión Exitosa!</strong><br>` +
+                      `Obtuviste ${essenceRefund} de Esencia Mágica (no hay items de ${nextTierName} disponibles para tu nivel).`);
+        }
+    } else {
+        // Fusión fallida - devolver algo de esencia
+        const essenceRefund = Math.floor(DISENCHANT_VALUES[item1.tier] * 1.5);
+        myPlayer.essence += essenceRefund;
+        addMessage(`💥 <strong>Fusión Fallida</strong><br>` +
+                  `Los items se destruyeron pero recuperaste ${essenceRefund} de Esencia Mágica.<br>` +
+                  `Probabilidad de éxito: ${(recipe.successRate * 100).toFixed(0)}%`);
+    }
+}
+
+/**
+ * Procesa el desencantamiento de un item
+ */
+function processDisenchant(cmd, addMessage) {
+    const parts = cmd.trim().split(/\s+/);
+    
+    if (parts.length !== 2) {
+        addMessage('❌ <strong>Uso incorrecto:</strong><br>/disenchant N<br>Destruye un item para obtener esencia mágica.');
+        return;
+    }
+    
+    const idx = parseInt(parts[1]);
+    
+    if (isNaN(idx) || idx < 1 || idx > myPlayer.inventory.length) {
+        addMessage(`❌ Índice inválido: ${idx}. El inventario tiene ${myPlayer.inventory.length} items.`);
+        return;
+    }
+    
+    const item = myPlayer.inventory[idx - 1];
+    const essenceGain = DISENCHANT_VALUES[item.tier];
+    const tierName = getTierName(item.tier);
+    const tierColor = getTierColor(item.tier);
+    
+    // Remover item y añadir esencia
+    myPlayer.inventory.splice(idx - 1, 1);
+    myPlayer.essence += essenceGain;
+    
+    addMessage(`🔮 <strong>Item Desencantado</strong><br>` +
+              `<span style="color:${tierColor}">${item.name}</span> [${tierName}] → ✨ +${essenceGain} Esencia Mágica`);
+}
+
+/**
+ * Muestra las recetas de crafteo disponibles
+ */
+function showCraftingRecipes(addMessage) {
+    let msg = '⚒️ <strong>Recetas de Crafteo Disponibles</strong><br>';
+    msg += `✨ Tu Esencia Mágica: <strong>${myPlayer.essence}</strong><br><br>`;
+    
+    for (const [key, recipe] of Object.entries(CRAFTING_RECIPES)) {
+        const canAfford = myPlayer.essence >= recipe.cost.essence && myPlayer.gold >= recipe.cost.gold;
+        const status = canAfford ? '✅' : '❌';
+        
+        msg += `${status} <strong>${recipe.name}</strong><br>`;
+        msg += `   ${recipe.description}<br>`;
+        msg += `   Costo: ✨ ${recipe.cost.essence} Esencia + 💎 ${recipe.cost.gold} Cristales<br>`;
+        msg += `   Comando: /craft ${key}<br><br>`;
+    }
+    
+    msg += '<em>Nota: Los consumibles ocupan 1 slot de inventario.</em>';
+    addMessage(msg);
+}
+
+/**
+ * Procesa el crafteo de un item
+ */
+function processCrafting(cmd, addMessage) {
+    const parts = cmd.trim().split(/\s+/);
+    
+    if (parts.length !== 2) {
+        addMessage('❌ <strong>Uso incorrecto:</strong><br>/craft [receta]<br>Usa /craft para ver recetas disponibles.');
+        return;
+    }
+    
+    const recipeKey = parts[1];
+    const recipe = CRAFTING_RECIPES[recipeKey];
+    
+    if (!recipe) {
+        addMessage('❌ Receta no encontrada. Usa /craft para ver las disponibles.');
+        return;
+    }
+    
+    // Verificar recursos
+    if (myPlayer.essence < recipe.cost.essence) {
+        addMessage(`❌ No tienes suficiente Esencia Mágica. Necesitas ${recipe.cost.essence}, tienes ${myPlayer.essence}.`);
+        return;
+    }
+    
+    if (myPlayer.gold < recipe.cost.gold) {
+        addMessage(`❌ No tienes suficientes Cristales. Necesitas ${recipe.cost.gold}, tienes ${myPlayer.gold}.`);
+        return;
+    }
+    
+    // Verificar espacio en inventario
+    if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
+        addMessage(`❌ Inventario lleno (${myPlayer.inventory.length}/${MAX_INVENTORY_SIZE}). Libera espacio antes de craftear.`);
+        return;
+    }
+    
+    // Consumir recursos
+    myPlayer.essence -= recipe.cost.essence;
+    myPlayer.gold -= recipe.cost.gold;
+    
+    // Crear item craftado
+    const craftedItem = {
+        name: recipe.name,
+        type: recipe.type,
+        effect: recipe.effect,
+        value: recipe.value,
+        tier: 'comun',
+        minLevel: 1,
+        description: recipe.description
+    };
+    
+    if (recipe.duration) {
+        craftedItem.duration = recipe.duration;
+    }
+    
+    myPlayer.inventory.push(craftedItem);
+    
+    addMessage(`⚒️ <strong>¡Item Craftedo!</strong><br>` +
+              `${recipe.name}<br>` +
+              `${recipe.description}<br>` +
+              `Costo: ✨ ${recipe.cost.essence} Esencia + 💎 ${recipe.cost.gold} Cristales`);
+}
+
+/**
+ * Procesa el uso de un consumible
+ */
+function processUseItem(cmd, addMessage) {
+    const parts = cmd.trim().split(/\s+/);
+    
+    if (parts.length !== 2) {
+        addMessage('❌ <strong>Uso incorrecto:</strong><br>/use N<br>Usa un consumible del inventario.');
+        return;
+    }
+    
+    const idx = parseInt(parts[1]);
+    
+    if (isNaN(idx) || idx < 1 || idx > myPlayer.inventory.length) {
+        addMessage(`❌ Índice inválido: ${idx}. El inventario tiene ${myPlayer.inventory.length} items.`);
+        return;
+    }
+    
+    const item = myPlayer.inventory[idx - 1];
+    
+    if (item.type !== 'consumable' && item.type !== 'buff') {
+        addMessage('❌ Este item no es un consumible.');
+        return;
+    }
+    
+    let used = false;
+    
+    if (item.effect === 'heal') {
+        const healAmount = Math.min(item.value, myPlayer.maxHp - myPlayer.hp);
+        if (healAmount <= 0) {
+            addMessage('❌ Tu vida ya está llena.');
+            return;
+        }
+        myPlayer.hp += healAmount;
+        addMessage(`🧪 <strong>Usaste ${item.name}</strong><br>` +
+                  `❤️ Recuperaste ${healAmount} HP<br>` +
+                  `Vida actual: ${myPlayer.hp}/${myPlayer.maxHp}`);
+        used = true;
+    }
+    else if (item.effect === 'stamina') {
+        const staminaAmount = Math.min(item.value, myPlayer.maxStamina - myPlayer.stamina);
+        if (staminaAmount <= 0) {
+            addMessage('❌ Tu energía ya está llena.');
+            return;
+        }
+        myPlayer.stamina += staminaAmount;
+        addMessage(`🧪 <strong>Usaste ${item.name}</strong><br>` +
+                  `⚡ Recuperaste ${staminaAmount} Energía<br>` +
+                  `Energía actual: ${myPlayer.stamina}/${myPlayer.maxStamina}`);
+        used = true;
+    }
+    else if (item.effect === 'damage_boost') {
+        myPlayer.activeBuffs.push({
+            name: item.name,
+            multiplier: item.value,
+            remaining: item.duration
+        });
+        addMessage(`🧪 <strong>Usaste ${item.name}</strong><br>` +
+                  `⚔️ Daño aumentado en ${(item.value * 100 - 100).toFixed(0)}% por ${item.duration} acciones`);
+        used = true;
+    }
+    
+    if (used) {
+        // Remover item consumido
+        myPlayer.inventory.splice(idx - 1, 1);
+    }
 }

@@ -3,6 +3,63 @@
  * Módulo de configuración con constantes, datos de items y configuraciones
  */
 
+// Configuración del juego
+export const MAX_INVENTORY_SIZE = 10; // Límite máximo de objetos en inventario
+
+// Configuración de Crafteo y Fusión
+export const FUSION_RECIPES = {
+    // Fusión de 3 items del mismo tier para crear uno de tier superior
+    comun_to_poco_comun: { resultTier: 'poco-comun', successRate: 0.8, materialCount: 3 },
+    poco_comun_to_raro: { resultTier: 'raro', successRate: 0.7, materialCount: 3 },
+    raro_to_epico: { resultTier: 'epico', successRate: 0.6, materialCount: 3 },
+    epico_to_legendario: { resultTier: 'legendario', successRate: 0.5, materialCount: 3 }
+};
+
+export const DISENCHANT_VALUES = {
+    comun: 5,
+    'poco-comun': 15,
+    raro: 40,
+    epico: 100,
+    legendario: 250
+};
+
+export const CRAFTING_RECIPES = {
+    // Pociones básicas
+    'health_potion_small': {
+        name: 'Poción de Vida Menor',
+        type: 'consumable',
+        effect: 'heal',
+        value: 50,
+        cost: { essence: 100, gold: 50 },
+        description: 'Restaura 50 HP instantáneamente'
+    },
+    'health_potion_large': {
+        name: 'Poción de Vida Mayor',
+        type: 'consumable',
+        effect: 'heal',
+        value: 150,
+        cost: { essence: 300, gold: 150 },
+        description: 'Restaura 150 HP instantáneamente'
+    },
+    'stamina_potion': {
+        name: 'Poción de Energía',
+        type: 'consumable',
+        effect: 'stamina',
+        value: 10,
+        cost: { essence: 150, gold: 75 },
+        description: 'Restaura 10 puntos de energía'
+    },
+    'damage_boost': {
+        name: 'Elixir de Fuerza',
+        type: 'buff',
+        effect: 'damage_boost',
+        value: 1.2,
+        duration: 5, // número de acciones
+        cost: { essence: 200, gold: 100 },
+        description: 'Aumenta el daño en 20% por 5 acciones'
+    }
+};
+
 // Configuración de Reinos
 export const realms = ["Aetherion", "Sylvandar", "Obsidian Reach", "Celestara", "Emberforge"];
 
@@ -106,7 +163,9 @@ export function createInitialPlayer() {
         maxHp: 10,
         weapon: { name: "Bastón de Novato", atk: 0, tier: "comun", minLevel: 1 },
         armor: { name: "Túnica Gastada", def: 0, tier: "comun", minLevel: 1 },
-        inventory: []
+        inventory: [],
+        essence: 0, // Esencia mágica para crafteo
+        activeBuffs: [] // Buffs activos temporales
     };
 }
 
