@@ -115,7 +115,122 @@ export const initialWorldState = {
     globalEssence: 12480,
     nextConvergence: "2h 45min",
     activeRealms: ["Aetherion", "Sylvandar", "Obsidian Reach"],
-    totalGuardians: 1
+    totalGuardians: 1,
+    // Estado del Boss Raid actual
+    currentBoss: null,
+    bossDefeatedCount: 0,
+    // Estado del Evento Mundial
+    worldEvent: null,
+    eventProgress: 0,
+    eventTarget: 100000
+};
+
+// Jefes de Mazmorra (Boss Raids)
+export const dungeonBosses = [
+    {
+        name: "Zarathul el Corrupto",
+        level: 10,
+        hp: 500,
+        atk: 25,
+        def: 15,
+        expReward: 800,
+        goldReward: 400,
+        dropChance: 0.40,
+        description: "Un antiguo hechicero consumido por la oscuridad",
+        tier: "raro"
+    },
+    {
+        name: "Ignis el Devorador",
+        level: 20,
+        hp: 1200,
+        atk: 45,
+        def: 30,
+        expReward: 1800,
+        goldReward: 900,
+        dropChance: 0.50,
+        description: "Un dragón de fuego que emerge de las profundidades",
+        tier: "epico"
+    },
+    {
+        name: "Malakor el Eterno",
+        level: 35,
+        hp: 2500,
+        atk: 75,
+        def: 55,
+        expReward: 4000,
+        goldReward: 2000,
+        dropChance: 0.65,
+        description: "Un señor demoníaco que ha conquistado mil reinos",
+        tier: "legendario"
+    },
+    {
+        name: "Vorax el Quebrantamundos",
+        level: 50,
+        hp: 5000,
+        atk: 120,
+        def: 90,
+        expReward: 8000,
+        goldReward: 4500,
+        dropChance: 0.75,
+        description: "Una entidad cósmica que amenaza con destruir la realidad",
+        tier: "legendario"
+    }
+];
+
+// Eventos Mundiales
+export const worldEvents = [
+    {
+        name: "Invasión de las Sombras",
+        description: "Las fuerzas oscuras atacan los reinos. ¡Derrota enemigos para contribuir!",
+        targetContribution: 50000,
+        durationMinutes: 120,
+        rewardMultiplier: 1.5,
+        eventType: "invasion"
+    },
+    {
+        name: "Convergencia Arcana",
+        description: "La energía mágica se concentra. ¡Explora para recolectar esencia!",
+        targetContribution: 75000,
+        durationMinutes: 180,
+        rewardMultiplier: 2.0,
+        eventType: "convergence"
+    },
+    {
+        name: "Despertar de los Antiguos",
+        description: "Los guardianes ancestrales despiertan. ¡Completa mazmorras para ayudar!",
+        targetContribution: 100000,
+        durationMinutes: 240,
+        rewardMultiplier: 2.5,
+        eventType: "awakening"
+    },
+    {
+        name: "Lluvia de Cristales",
+        description: "Cristales celestiales caen del cielo. ¡Explora para encontrarlos!",
+        targetContribution: 60000,
+        durationMinutes: 90,
+        rewardMultiplier: 1.75,
+        eventType: "crystal_rain"
+    }
+];
+
+// Recompensas de eventos mundiales
+export const eventRewards = {
+    invasion: {
+        common: { name: "Espada de Sombra", atk: 28, tier: "epico", minLevel: 25, price: 0 },
+        rare: { name: "Armadura de Vacío", def: 38, tier: "epico", minLevel: 25, price: 0 }
+    },
+    convergence: {
+        common: { name: "Bastón de Convergencia", atk: 42, tier: "legendario", minLevel: 35, price: 0 },
+        rare: { name: "Túnica Arcana Superior", def: 55, tier: "legendario", minLevel: 35, price: 0 }
+    },
+    awakening: {
+        common: { name: "Hoja Ancestral", atk: 70, tier: "legendario", minLevel: 45, price: 0 },
+        rare: { name: "Coraza de los Antiguos", def: 85, tier: "legendario", minLevel: 45, price: 0 }
+    },
+    crystal_rain: {
+        common: { name: "Cristal Estelar", atk: 35, tier: "epico", minLevel: 30, price: 0 },
+        rare: { name: "Manto de Cristal", def: 45, tier: "epico", minLevel: 30, price: 0 }
+    }
 };
 
 // Utilidades de Tier
