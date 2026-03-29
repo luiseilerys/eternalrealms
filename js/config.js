@@ -3,6 +3,156 @@
  * Módulo de configuración con constantes, datos de items y configuraciones
  */
 
+// Configuración de Elementos y Sistema de Combate
+export const ELEMENTS = {
+    FIRE: { name: 'Fuego', emoji: '🔥', color: '#ef4444' },
+    WATER: { name: 'Agua', emoji: '💧', color: '#3b82f6' },
+    EARTH: { name: 'Tierra', emoji: '🌍', color: '#84cc16' },
+    AIR: { name: 'Aire', emoji: '💨', color: '#06b6d4' },
+    LIGHT: { name: 'Luz', emoji: '✨', color: '#fbbf24' },
+    DARK: { name: 'Oscuridad', emoji: '🌑', color: '#7c3aed' }
+};
+
+// Tabla de ventajas elementales (atacante vs defensor)
+// > 1.5 = ventaja, < 0.75 = desventaja, 1.0 = neutral
+export const ELEMENT_CHART = {
+    [ELEMENTS.FIRE.name]: {
+        [ELEMENTS.FIRE.name]: 1.0,
+        [ELEMENTS.WATER.name]: 0.5,
+        [ELEMENTS.EARTH.name]: 1.5,
+        [ELEMENTS.AIR.name]: 1.5,
+        [ELEMENTS.LIGHT.name]: 1.0,
+        [ELEMENTS.DARK.name]: 1.0
+    },
+    [ELEMENTS.WATER.name]: {
+        [ELEMENTS.FIRE.name]: 1.5,
+        [ELEMENTS.WATER.name]: 1.0,
+        [ELEMENTS.EARTH.name]: 0.5,
+        [ELEMENTS.AIR.name]: 1.0,
+        [ELEMENTS.LIGHT.name]: 1.5,
+        [ELEMENTS.DARK.name]: 0.5
+    },
+    [ELEMENTS.EARTH.name]: {
+        [ELEMENTS.FIRE.name]: 0.5,
+        [ELEMENTS.WATER.name]: 1.5,
+        [ELEMENTS.EARTH.name]: 1.0,
+        [ELEMENTS.AIR.name]: 0.5,
+        [ELEMENTS.LIGHT.name]: 1.0,
+        [ELEMENTS.DARK.name]: 1.5
+    },
+    [ELEMENTS.AIR.name]: {
+        [ELEMENTS.FIRE.name]: 0.5,
+        [ELEMENTS.WATER.name]: 1.0,
+        [ELEMENTS.EARTH.name]: 1.5,
+        [ELEMENTS.AIR.name]: 1.0,
+        [ELEMENTS.LIGHT.name]: 1.5,
+        [ELEMENTS.DARK.name]: 0.5
+    },
+    [ELEMENTS.LIGHT.name]: {
+        [ELEMENTS.FIRE.name]: 1.0,
+        [ELEMENTS.WATER.name]: 0.5,
+        [ELEMENTS.EARTH.name]: 1.0,
+        [ELEMENTS.AIR.name]: 0.5,
+        [ELEMENTS.LIGHT.name]: 1.0,
+        [ELEMENTS.DARK.name]: 1.5
+    },
+    [ELEMENTS.DARK.name]: {
+        [ELEMENTS.FIRE.name]: 1.0,
+        [ELEMENTS.WATER.name]: 1.5,
+        [ELEMENTS.EARTH.name]: 0.5,
+        [ELEMENTS.AIR.name]: 1.5,
+        [ELEMENTS.LIGHT.name]: 0.5,
+        [ELEMENTS.DARK.name]: 1.0
+    }
+};
+
+// Iconografía para tipos de items
+export const ITEM_ICONS = {
+    weapon: {
+        sword: '⚔️',
+        axe: '🪓',
+        bow: '🏹',
+        staff: '🪄',
+        dagger: '🗡️',
+        hammer: '🔨',
+        default: '⚔️'
+    },
+    armor: {
+        shield: '🛡️',
+        chest: '🦺',
+        helmet: '🪖',
+        robe: '👘',
+        default: '🛡️'
+    },
+    consumable: {
+        potion: '🧪',
+        scroll: '📜',
+        food: '🍖',
+        default: '🧪'
+    },
+    states: {
+        hp: '❤️',
+        energy: '⚡',
+        mana: '✨',
+        gold: '🪙',
+        xp: '🏆',
+        essence: '💎',
+        level: '⭐'
+    }
+};
+
+// Mapeo de nombres de items a iconos
+export function getItemIcon(item) {
+    const name = item.name.toLowerCase();
+    
+    // Determinar tipo
+    if (item.atk !== undefined) {
+        // Es arma
+        if (name.includes('espada') || name.includes('blade') || name.includes('hoja')) return ITEM_ICONS.weapon.sword;
+        if (name.includes('hacha') || name.includes('axe')) return ITEM_ICONS.weapon.axe;
+        if (name.includes('arco') || name.includes('bow')) return ITEM_ICONS.weapon.bow;
+        if (name.includes('bastón') || name.includes('staff')) return ITEM_ICONS.weapon.staff;
+        if (name.includes('daga') || name.includes('dagger')) return ITEM_ICONS.weapon.dagger;
+        if (name.includes('martillo') || name.includes('hammer')) return ITEM_ICONS.weapon.hammer;
+        return ITEM_ICONS.weapon.default;
+    } else if (item.def !== undefined) {
+        // Es armadura
+        if (name.includes('escudo') || name.includes('shield')) return ITEM_ICONS.armor.shield;
+        if (name.includes('coraza') || name.includes('placa') || name.includes('chest')) return ITEM_ICONS.armor.chest;
+        if (name.includes('yelmo') || name.includes('casco') || name.includes('helm')) return ITEM_ICONS.armor.helmet;
+        if (name.includes('túnica') || name.includes('manto') || name.includes('robe')) return ITEM_ICONS.armor.robe;
+        return ITEM_ICONS.armor.default;
+    } else if (item.type === 'consumable') {
+        if (item.effect === 'heal' || name.includes('poción')) return ITEM_ICONS.consumable.potion;
+        if (name.includes('pergamino') || name.includes('scroll')) return ITEM_ICONS.consumable.scroll;
+        return ITEM_ICONS.consumable.default;
+    }
+    
+    return '📦';
+}
+
+// Asignar elemento aleatorio a un item
+export function assignElementToItem(item) {
+    const elementKeys = Object.keys(ELEMENTS);
+    const randomElement = elementKeys[Math.floor(Math.random() * elementKeys.length)];
+    item.element = ELEMENTS[randomElement].name;
+    item.elementEmoji = ELEMENTS[randomElement].emoji;
+    return item;
+}
+
+// Calcular multiplicador elemental
+export function getElementMultiplier(attackerElement, defenderElement) {
+    if (!attackerElement || !defenderElement) return 1.0;
+    return ELEMENT_CHART[attackerElement]?.[defenderElement] || 1.0;
+}
+
+// Obtener texto de ventaja/desventaja elemental
+export function getElementEffectText(multiplier) {
+    if (multiplier >= 1.5) return { text: '¡SUPER EFECTIVO!', color: '#fbbf24', bold: true };
+    if (multiplier <= 0.5) return { text: 'Poco efectivo...', color: '#94a3b8', bold: false };
+    return null;
+}
+
 // Configuración del juego
 export const MAX_INVENTORY_SIZE = 10; // Límite máximo de objetos en inventario
 

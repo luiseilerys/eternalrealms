@@ -8,7 +8,9 @@ import {
     questFlavors, emptyQuestFlavors, merchantNames,
     getTierColor, getTierName, createInitialPlayer, initialWorldState,
     dungeonBosses, worldEvents, eventRewards,
-    MAX_INVENTORY_SIZE, FUSION_RECIPES, DISENCHANT_VALUES, CRAFTING_RECIPES
+    MAX_INVENTORY_SIZE, FUSION_RECIPES, DISENCHANT_VALUES, CRAFTING_RECIPES,
+    ELEMENTS, ELEMENT_CHART, ITEM_ICONS, getItemIcon, assignElementToItem,
+    getElementMultiplier, getElementEffectText
 } from './config.js';
 
 // Estado del jugador
@@ -86,15 +88,26 @@ export function levelUpStats(isMilestone = false) {
  * @param {Function} addMessage - Función para agregar mensajes al chat
  */
 export function showEquipment(addMessage) {
-    let msg = '🛡️ <strong>Equipo actual</strong><br>';
+    const weaponIcon = getItemIcon(myPlayer.weapon);
+    const armorIcon = getItemIcon(myPlayer.armor);
     const weaponTierName = getTierName(myPlayer.weapon.tier);
     const armorTierName = getTierName(myPlayer.armor.tier);
     
-    msg += `⚔️ Arma: <span style="color:${getTierColor(myPlayer.weapon.tier)}">${myPlayer.weapon.name}</span> [${weaponTierName}] (+${myPlayer.weapon.atk} Ataque)<br>`;
-    msg += `🛡️ Armadura: <span style="color:${getTierColor(myPlayer.armor.tier)}">${myPlayer.armor.name}</span> [${armorTierName}] (+${myPlayer.armor.def} Defensa)<br><br>`;
+    let msg = '🛡️ <strong>Equipo actual</strong><br>';
+    msg += `${weaponIcon} Arma: <span style="color:${getTierColor(myPlayer.weapon.tier)}">${myPlayer.weapon.name}</span> [${weaponTierName}] (+${myPlayer.weapon.atk} Ataque)`;
+    if (myPlayer.weapon.element) {
+        msg += ` ${myPlayer.weapon.elementEmoji}`;
+    }
+    msg += '<br>';
+    
+    msg += `${armorIcon} Armadura: <span style="color:${getTierColor(myPlayer.armor.tier)}">${myPlayer.armor.name}</span> [${armorTierName}] (+${myPlayer.armor.def} Defensa)`;
+    if (myPlayer.armor.element) {
+        msg += ` ${myPlayer.armor.elementEmoji}`;
+    }
+    msg += '<br><br>';
     
     // Mostrar esencia y buffs
-    msg += `✨ Esencia Mágica: ${myPlayer.essence}<br>`;
+    msg += `${ITEM_ICONS.states.essence} Esencia Mágica: ${myPlayer.essence}<br>`;
     if (myPlayer.activeBuffs.length > 0) {
         msg += '🔮 <strong>Buffs Activos:</strong><br>';
         myPlayer.activeBuffs.forEach(buff => {
@@ -110,15 +123,21 @@ export function showEquipment(addMessage) {
         msg += '<em>Inventario vacío</em>';
     } else {
         myPlayer.inventory.forEach((item, i) => {
+            const icon = getItemIcon(item);
             const type = item.atk !== undefined ? '⚔️' : '🛡️';
             const bonus = item.atk !== undefined ? `+${item.atk} Ataque` : `+${item.def} Defensa`;
             const tierColor = getTierColor(item.tier);
             const tierName = getTierName(item.tier);
             const canEquip = myPlayer.level >= item.minLevel;
             
-            msg += `${i+1}. <span style="color:${tierColor}">${type} ${item.name}</span> [${tierName}] - ${bonus}`;
-            msg += canEquip ? '' : ` | <em style="color:#ef4444">(Nvl ${item.minLevel} requerido)</em>`;
-            msg += '<br>';
+            let itemLine = `${i+1}. ${icon} <span style="color:${tierColor}">${type} ${item.name}</span> [${tierName}] - ${bonus}`;
+            if (item.element) {
+                itemLine += ` ${item.elementEmoji}`;
+            }
+            if (!canEquip) {
+                itemLine += ` | <em style="color:#ef4444">(Nvl ${item.minLevel} requerido)</em>`;
+            }
+            msg += itemLine + '<br>';
         });
     }
     
@@ -362,16 +381,20 @@ function processQuest(addMessage, safeSendUpdate, isWebxdc) {
             } else {
                 if (Math.random() < 0.55) {
                     const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
+                    assignElementToItem(newWeapon);
                     myPlayer.inventory.push(newWeapon);
                     const tierColor = getTierColor(newWeapon.tier);
                     const tierName = getTierName(newWeapon.tier);
-                    addMessage(`⚔️ ¡Encontraste un arma! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}] (+${newWeapon.atk} Ataque)`);
+                    const weaponIcon = getItemIcon(newWeapon);
+                    addMessage(`${weaponIcon} ¡Encontraste un arma! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}] ${newWeapon.elementEmoji} (+${newWeapon.atk} Ataque)`);
                 } else {
                     const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
+                    assignElementToItem(newArmor);
                     myPlayer.inventory.push(newArmor);
                     const tierColor = getTierColor(newArmor.tier);
                     const tierName = getTierName(newArmor.tier);
-                    addMessage(`🛡️ ¡Encontraste una armadura! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}] (+${newArmor.def} Defensa)`);
+                    const armorIcon = getItemIcon(newArmor);
+                    addMessage(`${armorIcon} ¡Encontraste una armadura! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}] ${newArmor.elementEmoji} (+${newArmor.def} Defensa)`);
                 }
             }
         }
@@ -457,16 +480,20 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
         } else {
             if (Math.random() < 0.5) {
                 const newWeapon = {...possibleWeapons[Math.floor(Math.random() * possibleWeapons.length)]};
+                assignElementToItem(newWeapon);
                 myPlayer.inventory.push(newWeapon);
                 const tierColor = getTierColor(newWeapon.tier);
                 const tierName = getTierName(newWeapon.tier);
-                addMessage(`⚔️ ¡Encontraste un arma en la mazmorra! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}]`);
+                const weaponIcon = getItemIcon(newWeapon);
+                addMessage(`${weaponIcon} ¡Encontraste un arma en la mazmorra! <span style="color:${tierColor}"><strong>${newWeapon.name}</strong></span> [${tierName}] ${newWeapon.elementEmoji}`);
             } else {
                 const newArmor = {...possibleArmors[Math.floor(Math.random() * possibleArmors.length)]};
+                assignElementToItem(newArmor);
                 myPlayer.inventory.push(newArmor);
                 const tierColor = getTierColor(newArmor.tier);
                 const tierName = getTierName(newArmor.tier);
-                addMessage(`🛡️ ¡Encontraste una armadura en la mazmorra! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}]`);
+                const armorIcon = getItemIcon(newArmor);
+                addMessage(`${armorIcon} ¡Encontraste una armadura en la mazmorra! <span style="color:${tierColor}"><strong>${newArmor.name}</strong></span> [${tierName}] ${newArmor.elementEmoji}`);
             }
         }
     }
@@ -647,21 +674,49 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
             return;
         }
         
-        // Calcular daño del jugador
-        const playerDmg = Math.floor(myPlayer.atk * (0.8 + Math.random() * 0.4));
+        // Asignar elemento al jugador y al jefe si no tienen
+        if (!myPlayer.weapon.element) assignElementToItem(myPlayer.weapon);
+        if (!boss.element) assignElementToItem(boss);
+        
+        // Calcular multiplicador elemental
+        const elementMultiplier = getElementMultiplier(myPlayer.weapon.element, boss.element);
+        const elementEffect = getElementEffectText(elementMultiplier);
+        
+        // Calcular daño del jugador con elemento
+        let playerDmg = Math.floor(myPlayer.atk * (0.8 + Math.random() * 0.4));
+        playerDmg = Math.floor(playerDmg * elementMultiplier);
+        
         const bossDmg = Math.floor(boss.atk * (0.7 + Math.random() * 0.3));
         
         // Aplicar defensa
         const actualDmgToBoss = Math.max(1, playerDmg - Math.floor(boss.def * 0.3));
         const actualDmgToPlayer = Math.max(1, bossDmg - Math.floor(myPlayer.def * 0.3));
         
+        // Aplicar buffs de daño
+        let finalDmgToBoss = actualDmgToBoss;
+        if (myPlayer.activeBuffs.some(buff => buff.effect === 'damage_boost')) {
+            const boostBuff = myPlayer.activeBuffs.find(buff => buff.effect === 'damage_boost');
+            finalDmgToBoss = Math.floor(actualDmgToBoss * boostBuff.value);
+        }
+        
         // Aplicar daño
-        boss.currentHp -= actualDmgToBoss;
+        boss.currentHp -= finalDmgToBoss;
         myPlayer.hp -= actualDmgToPlayer;
         
-        let msg = `⚔️ <strong>¡Combate contra ${boss.name}!</strong><br>`;
-        msg += `🗡️ Infliges <strong>${actualDmgToBoss}</strong> de daño<br>`;
-        msg += `💥 Recibes <strong>${actualDmgToPlayer}</strong> de daño<br>`;
+        // Construir mensaje de combate estilo RPG clásico
+        let msg = `⚔️ <strong>¡Combate contra ${boss.name} ${boss.elementEmoji || ''}</strong>!<br>`;
+        msg += `<span style="color:#ef4444">━━━━━━━━━━━━━━━━━━━━━━</span><br>`;
+        
+        // Mensaje de daño con icono y color
+        msg += `🗡️ Tu ataque (${myPlayer.weapon.elementEmoji || '⚔️'} ${myPlayer.weapon.element || 'Normal'}): <strong style="color:#fbbf24">${finalDmgToBoss}</strong> de daño`;
+        
+        if (elementEffect) {
+            msg += `<br><span style="color:${elementEffect.color}"><strong>${elementEffect.text}</strong></span> (${myPlayer.weapon.element} vs ${boss.element})`;
+        }
+        msg += '<br>';
+        
+        msg += `💥 Contraataque: <strong style="color:#ef4444">${actualDmgToPlayer}</strong> de daño recibido<br>`;
+        msg += `<span style="color:#ef4444">━━━━━━━━━━━━━━━━━━━━━━</span><br>`;
         
         // Verificar muerte del jugador
         if (myPlayer.hp <= 0) {
@@ -704,6 +759,9 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
                     dropItem = {...pool[Math.floor(Math.random() * pool.length)]};
                 }
                 
+                // Asignar elemento al drop del jefe
+                assignElementToItem(dropItem);
+                
                 // Verificar límite de inventario para drop de jefe
                 if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
                     msg += `<br>🎒 <strong>¡Mochila llena!</strong><br>`;
@@ -712,11 +770,12 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
                     myPlayer.inventory.push(dropItem);
                     const tierColor = getTierColor(dropItem.tier);
                     const tierName = getTierName(dropItem.tier);
+                    const icon = getItemIcon(dropItem);
                     const type = dropItem.atk !== undefined ? '⚔️' : '🛡️';
                     const bonus = dropItem.atk !== undefined ? `+${dropItem.atk} Ataque` : `+${dropItem.def} Defensa`;
                     
                     msg += `<br>🎁 <strong>¡DROP LEGENDARIO!</strong><br>`;
-                    msg += `<span style="color:${tierColor}">${type} ${dropItem.name}</span> [${tierName}] - ${bonus}`;
+                    msg += `${icon} <span style="color:${tierColor}">${type} ${dropItem.name}</span> [${tierName}] ${dropItem.elementEmoji} - ${bonus}`;
                 }
             }
             
