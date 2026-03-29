@@ -247,6 +247,13 @@ export function processCommand(cmd, addMessage, safeSendUpdate, isWebxdc) {
  * Procesa el comando /quest
  */
 function processQuest(addMessage, safeSendUpdate, isWebxdc) {
+    // Verificar si el jugador está al borde de la muerte
+    if (myPlayer.hp <= 1) {
+        addMessage("❌ <strong>¡Estás gravemente herido!</strong><br>" +
+                  "Con solo 1 HP no puedes explorar. Usa /rest para recuperarte.");
+        return;
+    }
+    
     if (myPlayer.stamina < 1) {
         addMessage("❌ ⚠️ Tu energía vital está agotada.");
         return;
@@ -352,6 +359,13 @@ function processQuest(addMessage, safeSendUpdate, isWebxdc) {
  * Procesa el comando /dungeon con posibilidad de encontrar boss
  */
 function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
+    // Verificar si el jugador está al borde de la muerte
+    if (myPlayer.hp <= 1) {
+        addMessage("❌ <strong>¡Estás gravemente herido!</strong><br>" +
+                  "Con solo 1 HP no puedes entrar a una mazmorra. Usa /rest para recuperarte.");
+        return;
+    }
+    
     if (myPlayer.stamina < 3) {
         addMessage("❌ No tienes suficiente energía para una Mazmorra.");
         return;
@@ -533,6 +547,13 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
     }
     
     if (action === 'attack') {
+        // Verificar si el jugador está al borde de la muerte
+        if (myPlayer.hp <= 1) {
+            addMessage("❌ <strong>¡Estás gravemente herido!</strong><br>" +
+                      "Con solo 1 HP no puedes atacar a un jefe. Usa /rest para recuperarte.");
+            return;
+        }
+        
         if (!worldState.currentBoss) {
             addMessage('❌ No hay ningún jefe activo. Explora mazmorras (/dungeon) para encontrar uno.');
             return;
@@ -733,6 +754,13 @@ function processWorldEvent(addMessage) {
  * Contribuye al progreso del evento mundial
  */
 function contributeToEvent(amount, addMessage, safeSendUpdate, isWebxdc) {
+    // Verificar si el jugador está al borde de la muerte
+    if (myPlayer.hp <= 1) {
+        addMessage("❌ <strong>¡Estás gravemente herido!</strong><br>" +
+                  "Con solo 1 HP no puedes contribuir al evento mundial. Usa /rest para recuperarte.");
+        return;
+    }
+    
     if (!worldState.worldEvent) return;
     
     worldState.eventProgress += amount;
