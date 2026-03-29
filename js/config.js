@@ -10,7 +10,8 @@ export const ELEMENTS = {
     EARTH: { name: 'Tierra', emoji: '🌍', color: '#84cc16' },
     AIR: { name: 'Aire', emoji: '💨', color: '#06b6d4' },
     LIGHT: { name: 'Luz', emoji: '✨', color: '#fbbf24' },
-    DARK: { name: 'Oscuridad', emoji: '🌑', color: '#7c3aed' }
+    DARK: { name: 'Oscuridad', emoji: '🌑', color: '#7c3aed' },
+    VOID: { name: 'Vacío', emoji: '🌌', color: '#4c1d95' }
 };
 
 // Tabla de ventajas elementales (atacante vs defensor)
