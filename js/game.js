@@ -416,7 +416,26 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
         return;
     }
     myPlayer.stamina -= 3;
-    const dmg = Math.floor(22 + Math.random() * 38);
+    // Calcular daño con causa específica
+    const damageCauses = [
+        { name: "Trampa oculta", minDmg: 15, maxDmg: 25 },
+        { name: "Ataque de esbirros", minDmg: 18, maxDmg: 30 },
+        { name: "Magia oscura", minDmg: 20, maxDmg: 35 },
+        { name: "Derrumbe", minDmg: 22, maxDmg: 40 }
+    ];
+    
+    const cause = damageCauses[Math.floor(Math.random() * damageCauses.length)];
+    let dmg = Math.floor(cause.minDmg + Math.random() * (cause.maxDmg - cause.minDmg));
+    
+    // Limitar el daño para que nunca baje de 1 HP
+    const maxDamage = myPlayer.hp - 1;
+    if (dmg > maxDamage) {
+        dmg = maxDamage;
+        addMessage(`⚠️ <strong>¡Casi mueres!</strong><br>${cause.name} te habría hecho ${Math.floor(22 + Math.random() * 38)} de daño, pero sobreviviste con 1 HP.`);
+    } else {
+        addMessage(`🕳️ <strong>Mazmorra explorada</strong><br>${cause.name}<br>❤️ Daño recibido: ${dmg}`);
+    }
+    
     myPlayer.hp = Math.max(1, myPlayer.hp - dmg);
     let reward = Math.floor(75 + Math.random() * 125);
     
@@ -426,8 +445,7 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
     }
     
     myPlayer.gold += reward;
-
-    addMessage(`🕳️ <strong>Mazmorra explorada</strong><br>❤️ Daño: ${dmg}<br>💎 Recompensa: +${reward} Cristales`);
+    addMessage(`💎 Recompensa: +${reward} Cristales`);
 
     // 10% chance de drop normal
     if (Math.random() < 0.10) {

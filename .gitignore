@@ -1,1 +1,1 @@
-(js/config.js and js/game.js are source files, no build artifacts, dependencies, or temp files detected in changes)
+(js/game.js is a source file, so no need to add anything to .gitignore)
