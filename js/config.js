@@ -424,7 +424,10 @@ export function createInitialPlayer() {
         armor: { name: "Túnica Gastada", def: 0, tier: "comun", minLevel: 1 },
         inventory: [],
         essence: 0, // Esencia mágica para crafteo
-        activeBuffs: [] // Buffs activos temporales
+        activeBuffs: [], // Buffs activos temporales
+        // Sistema de tiempos de acción
+        currentAction: null, // { type: 'quest'|'dungeon'|'raid', endTime: timestamp }
+        actionStartTime: 0 // Timestamp cuando inició la acción actual
     };
 }
 

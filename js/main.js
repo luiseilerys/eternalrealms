@@ -6,7 +6,7 @@
 import { 
     saveProgress, loadProgress, resetToNewHero, calculateStats, 
     processCommand, getPlayer, setPlayer, setGameStarted, isGameStarted,
-    getCurrentMerchant, setCurrentMerchant
+    getCurrentMerchant, setCurrentMerchant, formatTimeRemaining
 } from './game.js';
 import { 
     addMessage, createRealmButtons, getSelectedRealm, quickCommand,
@@ -111,6 +111,36 @@ function initWebxdcListener() {
 }
 
 /**
+ * Actualiza el temporizador de acción en la UI
+ */
+function updateActionTimer() {
+    const player = getPlayer();
+    
+    if (!player.currentAction) {
+        return;
+    }
+    
+    const now = Date.now();
+    
+    // Verificar si la acción completó
+    if (now >= player.currentAction.endTime) {
+        player.currentAction = null;
+        saveProgress();
+        addMessage(`✅ <strong>¡Tu acción ha completado!</strong><br>Vuelve a usar el comando para ver los resultados.`, true);
+        return;
+    }
+    
+    const remaining = player.currentAction.endTime - now;
+    const timeStr = formatTimeRemaining(remaining);
+    
+    // Actualizar indicador visual si existe
+    const timerElement = document.getElementById('action-timer');
+    if (timerElement) {
+        timerElement.innerHTML = `⏳ Acción en curso: <span style="color:#fbbf24">${timeStr}</span>`;
+    }
+}
+
+/**
  * Inicialización principal al cargar la página
  */
 function init() {
@@ -139,6 +169,9 @@ function init() {
     } else {
         addMessage("🌠 <strong>Eternal Realms</strong><br>Mundo compartido listo. Crea tu guardián para comenzar.", true);
     }
+    
+    // Iniciar temporizador de actualización de acciones (cada segundo)
+    setInterval(updateActionTimer, 1000);
 }
 
 // Iniciar cuando el DOM esté listo
