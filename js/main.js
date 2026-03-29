@@ -172,6 +172,8 @@ function init() {
     window.startGame = startGame;
     window.saveProgress = saveProgress;
     window.resetGame = resetGame;
+    window.isGameStarted = isGameStarted;
+    window.getPlayer = getPlayer;
 
     // Verificar si hay progreso guardado
     if (loadProgress()) {
