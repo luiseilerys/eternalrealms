@@ -211,7 +211,7 @@ export const CRAFTING_RECIPES = {
 };
 
 // Configuración de Reinos
-export const realms = ["Aetherion", "Sylvandar", "Obsidian Reach", "Celestara", "Emberforge"];
+export const realms = ["Aetherion", "Sylvandar"];
 
 // Configuración de Tiers
 export const tierConfig = {
