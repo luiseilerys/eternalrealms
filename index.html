@@ -4,10 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eternal Realms</title>
-    <!-- ✅ Referencia obligatoria para webxdc (NO incluir en el ZIP) -->
-    <script src="webxdc.js" onerror="this.style.display='none'"></script>
-    <!-- Hoja de estilos modularizada -->
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Hoja de estilos -->
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <style>
+        /* Estilos críticos inline para evitar FOUC */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #e2e8f0; }
+        #welcome { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .realm-btn { padding: 12px 20px; background: #1e293b; border: 2px solid #475569; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .realm-btn:hover { background: #334155; border-color: #a78bfa; }
+        .realm-btn.selected { background: #7c3aed; border-color: #a78bfa; }
+        .quick-bar { display: flex; gap: 6px; padding: 8px; overflow-x: auto; background: #1e293b; }
+        .quick-btn { padding: 8px 12px; background: #334155; border: none; border-radius: 6px; color: #e2e8f0; cursor: pointer; }
+        .input-bar { display: flex; gap: 8px; padding: 8px; background: #1e293b; }
+        .input-bar input { flex: 1; padding: 10px; background: #334155; border: 1px solid #475569; border-radius: 6px; color: #e2e8f0; }
+        .input-bar button { padding: 10px 20px; background: #7c3aed; border: none; border-radius: 6px; color: white; cursor: pointer; }
+        #chat-container { max-height: calc(100vh - 200px); overflow-y: auto; padding: 16px; }
+        .message { margin-bottom: 12px; padding: 10px; background: #1e293b; border-radius: 8px; border-left: 3px solid #7c3aed; }
+        .bot-message { border-left-color: #a78bfa; }
+        .user-message { border-left-color: #22c55e; }
+        .timestamp { font-size: 11px; color: #64748b; text-align: right; margin-top: 4px; }
+    </style>
 </head>
 <body>
 
@@ -17,36 +33,36 @@
     <div id="action-timer" style="text-align: center; padding: 8px; background: #1e2937; color: #fbbf24; font-size: 14px; display: none;"></div>
     
     <div class="quick-bar">
-        <button class="quick-btn" onclick="quickCommand('/me')">/me</button>
-        <button class="quick-btn" onclick="quickCommand('/quest')">/quest</button>
-        <button class="quick-btn" onclick="quickCommand('/dungeon')">/dungeon</button>
-        <button class="quick-btn" onclick="quickCommand('/rest')">/rest</button>
-        <button class="quick-btn" onclick="quickCommand('/equip')">/equip</button>
-        <button class="quick-btn" onclick="quickCommand('/world')">/world</button>
-        <button class="quick-btn" onclick="quickCommand('/help')">/help</button>
-        <button class="quick-btn" id="reset-btn" onclick="resetGame()" style="background:#ef4444;">🔄 Reset</button>
+        <button class="quick-btn" onclick="window.quickCommand('/me')">/me</button>
+        <button class="quick-btn" onclick="window.quickCommand('/quest')">/quest</button>
+        <button class="quick-btn" onclick="window.quickCommand('/dungeon')">/dungeon</button>
+        <button class="quick-btn" onclick="window.quickCommand('/rest')">/rest</button>
+        <button class="quick-btn" onclick="window.quickCommand('/equip')">/equip</button>
+        <button class="quick-btn" onclick="window.quickCommand('/world')">/world</button>
+        <button class="quick-btn" onclick="window.quickCommand('/help')">/help</button>
+        <button class="quick-btn" id="reset-btn" onclick="window.resetGame()" style="background:#ef4444;">🔄 Reset</button>
     </div>
 
     <div class="input-bar">
         <input type="text" id="command-input" placeholder="Comando (/me, /quest, /rest, /equip...)" autocomplete="off">
-        <button onclick="sendCommand()">➤</button>
+        <button onclick="window.sendCommand()">➤</button>
     </div>
 
     <div id="welcome">
-        <div style="max-width: 460px;">
+        <div style="max-width: 460px; padding: 20px;">
             <h1 style="font-size: 34px; margin-bottom: 10px; color: #c4b5fd;">🌌 Eternal Realms</h1>
             <p style="color: #94a3b8; margin-bottom: 30px;">RPG multijugador con mundo compartido.</p>
             
             <h3 style="margin-bottom: 12px; text-align:left;">Elige tu Reino</h3>
-            <div id="realm-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 8px; margin-bottom: 30px;"></div>
+            <div id="realm-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 30px;"></div>
             
-            <button onclick="startGame()" id="start-btn" style="width:100%; padding:16px; background:#a78bfa; color:#0f172a; border:none; border-radius:9999px; font-size:18px; font-weight:600; opacity:0.6; cursor:not-allowed;">
+            <button onclick="window.startGame()" id="start-btn" style="width:100%; padding:16px; background:#a78bfa; color:#0f172a; border:none; border-radius:9999px; font-size:18px; font-weight:600; cursor:pointer;">
                 🌟 Unirse al Mundo Compartido
             </button>
         </div>
     </div>
 
-    <!-- Scripts modularizados -->
-    <script type="module" src="js/main.js"></script>
+    <!-- Scripts del juego -->
+    <script type="module" src="js/main.js?v=2"></script>
 </body>
 </html>

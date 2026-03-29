@@ -5,6 +5,8 @@
 
 import { realms } from './config.js';
 
+let selectedRealm = null;
+
 /**
  * Agrega un mensaje al contenedor del chat
  * @param {string} content - Contenido HTML del mensaje
@@ -12,6 +14,7 @@ import { realms } from './config.js';
  */
 export function addMessage(content, isBot = true) {
     const container = document.getElementById('chat-container');
+    if (!container) return;
     const msg = document.createElement('div');
     msg.className = `message ${isBot ? 'bot-message' : 'user-message'}`;
     const time = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
@@ -25,25 +28,42 @@ export function addMessage(content, isBot = true) {
  */
 export function createRealmButtons() {
     const grid = document.getElementById('realm-grid');
+    if (!grid) return;
     grid.innerHTML = '';
+    selectedRealm = null;
     
-    realms.forEach(r => {
+    realms.forEach((r, index) => {
         const btn = document.createElement('div');
         btn.className = 'realm-btn';
         btn.textContent = `🌌 ${r}`;
         btn.onclick = () => {
-            // Guardar reino seleccionado en un atributo data para acceso posterior
-            grid.dataset.selectedRealm = r;
+            selectedRealm = r;
             document.querySelectorAll('.realm-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
+            updateStartButton();
         };
+        grid.appendChild(btn);
+        
         // Seleccionar primer reino por defecto
-        if (!grid.dataset.selectedRealm) {
-            grid.dataset.selectedRealm = r;
+        if (index === 0) {
+            selectedRealm = r;
             btn.classList.add('selected');
         }
-        grid.appendChild(btn);
     });
+    
+    updateStartButton();
+}
+
+/**
+ * Actualiza el estado del botón de inicio
+ */
+function updateStartButton() {
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+        startBtn.disabled = !selectedRealm;
+        startBtn.style.opacity = selectedRealm ? '1' : '0.6';
+        startBtn.style.cursor = selectedRealm ? 'pointer' : 'not-allowed';
+    }
 }
 
 /**
@@ -51,8 +71,7 @@ export function createRealmButtons() {
  * @returns {string|null} Nombre del reino seleccionado o null
  */
 export function getSelectedRealm() {
-    const grid = document.getElementById('realm-grid');
-    return grid?.dataset.selectedRealm || null;
+    return selectedRealm;
 }
 
 /**
@@ -78,7 +97,6 @@ export function initUIListeners(sendCommandFn) {
     // Auto-guardar al cambiar visibilidad
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
-            // La función saveProgress se importará desde game.js en main.js
             window.saveProgress?.();
         }
     });
@@ -107,24 +125,6 @@ export function initUIListeners(sendCommandFn) {
             timerElement.style.display = 'none';
         }
     }, 500);
-    
-    // Actualizar estado del botón de inicio según selección de reino
-    setInterval(() => {
-        const startBtn = document.getElementById('start-btn');
-        const grid = document.getElementById('realm-grid');
-        if (startBtn && grid) {
-            const selectedRealm = grid.dataset.selectedRealm;
-            if (selectedRealm) {
-                startBtn.disabled = false;
-                startBtn.style.opacity = '1';
-                startBtn.style.cursor = 'pointer';
-            } else {
-                startBtn.disabled = true;
-                startBtn.style.opacity = '0.6';
-                startBtn.style.cursor = 'not-allowed';
-            }
-        }
-    }, 300);
 }
 
 /**
