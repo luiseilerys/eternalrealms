@@ -77,6 +77,31 @@ export function initUIListeners(sendCommandFn) {
             window.saveProgress?.();
         }
     });
+    
+    // Mostrar/ocultar indicador de acción cuando hay cambios
+    setInterval(() => {
+        const timerElement = document.getElementById('action-timer');
+        if (!timerElement) return;
+        
+        const playerData = localStorage.getItem('eternalRealmsPlayer');
+        if (!playerData) {
+            timerElement.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const player = JSON.parse(playerData);
+            const now = Date.now();
+            
+            if (!player.currentAction || now >= player.currentAction.endTime) {
+                timerElement.style.display = 'none';
+            } else {
+                timerElement.style.display = 'block';
+            }
+        } catch (e) {
+            timerElement.style.display = 'none';
+        }
+    }, 500);
 }
 
 /**

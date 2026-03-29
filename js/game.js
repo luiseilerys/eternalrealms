@@ -23,6 +23,184 @@ let worldState = { ...initialWorldState };
 let gameStarted = false;
 let currentMerchant = null;
 
+// Configuración de tiempos de acción (en milisegundos)
+const ACTION_TIMES = {
+    quest: 3 * 60 * 1000,    // 3 minutos para quests
+    dungeon: 5 * 60 * 1000,  // 5 minutos para dungeons
+    raid: 7 * 60 * 1000      // 7 minutos para raids
+};
+
+/**
+ * Formatea un tiempo restante en formato legible
+ * @param {number} ms - Milisegundos restantes
+ * @returns {string} Tiempo formateado
+ */
+export function formatTimeRemaining(ms) {
+    if (ms <= 0) return '0s';
+    
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+}
+
+/**
+ * Verifica si el jugador puede realizar una acción
+ * @param {string} actionType - Tipo de acción ('quest', 'dungeon', 'raid')
+ * @returns {object} { canAct: boolean, remainingTime: number, actionType: string }
+ */
+export function checkActionReady(actionType) {
+    const now = Date.now();
+    
+    // Si no hay acción en curso, puede actuar
+    if (!myPlayer.currentAction) {
+        return { canAct: true, remainingTime: 0, actionType: null };
+    }
+    
+    // Verificar si la acción actual ya terminó
+    if (now >= myPlayer.currentAction.endTime) {
+        myPlayer.currentAction = null;
+        return { canAct: true, remainingTime: 0, actionType: null };
+    }
+    
+    // Calcular tiempo restante
+    const remainingTime = myPlayer.currentAction.endTime - now;
+    return { 
+        canAct: false, 
+        remainingTime: remainingTime,
+        actionType: myPlayer.currentAction.type
+    };
+}
+
+/**
+ * Inicia una nueva acción con tiempo
+ * @param {string} actionType - Tipo de acción ('quest', 'dungeon', 'raid')
+ * @returns {boolean} true si se inició correctamente
+ */
+export function startAction(actionType) {
+    const status = checkActionReady(actionType);
+    
+    if (!status.canAct) {
+        return false;
+    }
+    
+    const actionTime = ACTION_TIMES[actionType];
+    myPlayer.currentAction = {
+        type: actionType,
+        endTime: Date.now() + actionTime
+    };
+    myPlayer.actionStartTime = Date.now();
+    
+    return true;
+}
+
+/**
+ * Finaliza la acción actual y retorna los resultados
+ * @param {Function} addMessage - Función para agregar mensajes
+ * @param {Function} safeSendUpdate - Función para enviar actualizaciones webxdc
+ * @param {boolean} isWebxdc - Indica si está en entorno webxdc
+ * @returns {boolean} true si la acción se completó
+ */
+export function completeCurrentAction(addMessage, safeSendUpdate, isWebxdc, originalCommand) {
+    const now = Date.now();
+    
+    if (!myPlayer.currentAction) {
+        return false;
+    }
+    
+    if (now < myPlayer.currentAction.endTime) {
+        return false;
+    }
+    
+    const completedAction = myPlayer.currentAction;
+    myPlayer.currentAction = null;
+    
+    // Ejecutar el comando original que estaba pendiente
+    addMessage(`✅ <strong>¡Acción completada!</strong><br>${getActionCompleteMessage(completedAction.type)}`);
+    
+    // Re-ejecutar el comando original
+    processCommand(originalCommand, addMessage, safeSendUpdate, isWebxdc);
+    
+    return true;
+}
+
+/**
+ * Obtiene mensaje de completado según tipo de acción
+ * @param {string} actionType - Tipo de acción
+ * @returns {string} Mensaje descriptivo
+ */
+function getActionCompleteMessage(actionType) {
+    const messages = {
+        quest: '🌿 Tu exploración ha terminado. Los resultados están listos.',
+        dungeon: '🕳️ Has emergido de la mazmorra. Las recompensas te esperan.',
+        raid: '⚔️ El combate contra el jefe ha concluido.'
+    };
+    return messages[actionType] || '¡Tu acción ha completado!';
+}
+
+/**
+ * Procesa el comando con sistema de tiempo
+ * @param {string} cmd - Comando original
+ * @param {Function} addMessage - Función para agregar mensajes
+ * @param {Function} safeSendUpdate - Función para enviar actualizaciones webxdc
+ * @param {boolean} isWebxdc - Indica si está en entorno webxdc
+ * @param {string} actionType - Tipo de acción asociada
+ * @returns {boolean} true si se inició el tiempo, false si se ejecutó inmediatamente
+ */
+export function processCommandWithTimer(cmd, addMessage, safeSendUpdate, isWebxdc, actionType) {
+    const now = Date.now();
+    
+    // Verificar si hay una acción pendiente que ya completó
+    if (myPlayer.currentAction && now >= myPlayer.currentAction.endTime) {
+        myPlayer.currentAction = null;
+    }
+    
+    // Si hay una acción en curso, mostrar estado
+    if (myPlayer.currentAction) {
+        const remaining = myPlayer.currentAction.endTime - now;
+        const actionName = getActionName(myPlayer.currentAction.type);
+        
+        addMessage(`⏳ <strong>${actionName} en progreso...</strong><br>` +
+                  `Tiempo restante: <span style="color:#fbbf24">${formatTimeRemaining(remaining)}</span><br>` +
+                  `<em>Debes esperar a que termine esta acción antes de iniciar otra.</em>`);
+        return false;
+    }
+    
+    // Iniciar nueva acción
+    const actionTime = ACTION_TIMES[actionType];
+    myPlayer.currentAction = {
+        type: actionType,
+        endTime: now + actionTime
+    };
+    myPlayer.actionStartTime = now;
+    
+    const actionName = getActionName(actionType);
+    addMessage(`⏳ <strong>Iniciando ${actionName}...</strong><br>` +
+              `Tiempo estimado: <span style="color:#fbbf24">${formatTimeRemaining(actionTime)}</span><br>` +
+              `<em>Vuelve cuando el temporizador haya terminado para ver los resultados.</em>`);
+    
+    saveProgress();
+    return true;
+}
+
+/**
+ * Obtiene nombre legible de la acción
+ * @param {string} actionType - Tipo de acción
+ * @returns {string} Nombre de la acción
+ */
+function getActionName(actionType) {
+    const names = {
+        quest: 'Exploración',
+        dungeon: 'Mazmorra',
+        raid: 'Combate contra Jefe'
+    };
+    return names[actionType] || 'Acción';
+}
+
 /**
  * Guarda el progreso en localStorage
  */
@@ -208,13 +386,48 @@ export function processCommand(cmd, addMessage, safeSendUpdate, isWebxdc) {
         );
     }
     else if (lower.includes('quest')) {
-        processQuest(addMessage, safeSendUpdate, isWebxdc);
+        // Verificar si la acción ya completó y ejecutar resultados
+        const now = Date.now();
+        if (myPlayer.currentAction && myPlayer.currentAction.type === 'quest' && now >= myPlayer.currentAction.endTime) {
+            const completedAction = myPlayer.currentAction;
+            myPlayer.currentAction = null;
+            addMessage(`✅ <strong>¡Exploración completada!</strong><br>🌿 Tu exploración ha terminado. Los resultados están listos.`);
+            processQuest(addMessage, safeSendUpdate, isWebxdc);
+        } else {
+            processCommandWithTimer(cmd, addMessage, safeSendUpdate, isWebxdc, 'quest');
+        }
     }
     else if (lower === '/dungeon') {
-        processDungeon(addMessage, safeSendUpdate, isWebxdc);
+        // Verificar si la acción ya completó y ejecutar resultados
+        const now = Date.now();
+        if (myPlayer.currentAction && myPlayer.currentAction.type === 'dungeon' && now >= myPlayer.currentAction.endTime) {
+            const completedAction = myPlayer.currentAction;
+            myPlayer.currentAction = null;
+            addMessage(`✅ <strong>¡Mazmorra completada!</strong><br>🕳️ Has emergido de la mazmorra. Las recompensas te esperan.`);
+            processDungeon(addMessage, safeSendUpdate, isWebxdc);
+        } else {
+            processCommandWithTimer(cmd, addMessage, safeSendUpdate, isWebxdc, 'dungeon');
+        }
     }
     else if (lower.startsWith('/raid')) {
-        processBossRaid(lower, addMessage, safeSendUpdate, isWebxdc);
+        const now = Date.now();
+        // Para raids, verificar si es ataque o info
+        const raidParts = lower.split(' ');
+        const raidAction = raidParts[1] || 'info';
+        
+        // Comandos de información no requieren tiempo
+        if (raidAction === 'info' || raidAction === 'status' || raidAction === 'flee') {
+            processBossRaid(lower, addMessage, safeSendUpdate, isWebxdc);
+        }
+        // Verificar si la acción ya completó y ejecutar resultados
+        else if (myPlayer.currentAction && myPlayer.currentAction.type === 'raid' && now >= myPlayer.currentAction.endTime) {
+            const completedAction = myPlayer.currentAction;
+            myPlayer.currentAction = null;
+            addMessage(`✅ <strong>¡Combate completado!</strong><br>⚔️ El combate contra el jefe ha concluido.`);
+            processBossRaid(lower, addMessage, safeSendUpdate, isWebxdc);
+        } else {
+            processCommandWithTimer(cmd, addMessage, safeSendUpdate, isWebxdc, 'raid');
+        }
     }
     else if (lower === '/event') {
         processWorldEvent(addMessage);
