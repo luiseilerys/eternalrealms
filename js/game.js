@@ -10,7 +10,7 @@ import {
     dungeonBosses, worldEvents, eventRewards,
     MAX_INVENTORY_SIZE, FUSION_RECIPES, DISENCHANT_VALUES, CRAFTING_RECIPES,
     ELEMENTS, ELEMENT_CHART, ITEM_ICONS, getItemIcon, assignElementToItem,
-    getElementMultiplier, getElementEffectText
+    getElementMultiplier, getElementEffectText, dungeonEnemies, getRandomEnemy
 } from './config.js';
 
 // Estado del jugador
@@ -440,6 +440,8 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
     }
     myPlayer.stamina -= 3;
     // Calcular daño con causa específica
+    // Sistema de enemigos por bioma implementado en config.js
+    const enemy = getRandomEnemy(myPlayer.level);
     const damageCauses = [
         { name: "Trampa oculta", minDmg: 15, maxDmg: 25 },
         { name: "Ataque de esbirros", minDmg: 18, maxDmg: 30 },
@@ -456,7 +458,7 @@ function processDungeon(addMessage, safeSendUpdate, isWebxdc) {
         dmg = maxDamage;
         addMessage(`⚠️ <strong>¡Casi mueres!</strong><br>${cause.name} te habría hecho ${Math.floor(22 + Math.random() * 38)} de daño, pero sobreviviste con 1 HP.`);
     } else {
-        addMessage(`🕳️ <strong>Mazmorra explorada</strong><br>${cause.name}<br>❤️ Daño recibido: ${dmg}`);
+        addMessage(`🕳️ <strong>Mazmorra explorada</strong><br>${enemy.emoji} <strong>${enemy.name}</strong> (${enemy.element})<br>${cause.name}<br>❤️ Daño recibido: ${dmg}`);
     }
     
     myPlayer.hp = Math.max(1, myPlayer.hp - dmg);
