@@ -50,6 +50,7 @@ export function resetToNewHero() {
     myPlayer = createInitialPlayer();
     localStorage.removeItem('eternalRealmsPlayer');
     currentMerchant = null;
+    gameStarted = false;
 }
 
 /**
@@ -287,7 +288,6 @@ export function processCommand(cmd, addMessage, safeSendUpdate, isWebxdc) {
     else if (lower === '/reset') {
         addMessage('⚠️ <strong>Reiniciando personaje...</strong><br>Se borrará todo el progreso.');
         resetToNewHero();
-        gameStarted = false;
         document.getElementById('welcome').style.display = 'flex';
         document.getElementById('chat-container').innerHTML = '';
         addMessage('🌌 El mundo se ha reiniciado. Crea un nuevo guardián.', true);
