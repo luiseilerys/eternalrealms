@@ -602,7 +602,7 @@ function processBuyItem(cmd, addMessage) {
 }
 
 /**
- * Muestra el jefe actual en raid
+ * Muestra el jefe actual en raid con información detallada del loot
  */
 function showCurrentBoss(addMessage) {
     if (!worldState.currentBoss) {
@@ -616,18 +616,40 @@ function showCurrentBoss(addMessage) {
     const hpPercent = Math.floor((boss.currentHp / boss.maxHp) * 100);
     const hpBar = '█'.repeat(Math.floor(hpPercent / 10)) + '░'.repeat(10 - Math.floor(hpPercent / 10));
     
-    let msg = `👹 <strong>${boss.name}</strong> — Nivel ${boss.level}<br>`;
+    // Calcular loot esperado
+    let lootText = '';
+    if (boss.lootTable && boss.lootTable.length > 0) {
+        const lootTiers = {};
+        boss.lootTable.forEach(tier => {
+            lootTiers[tier] = (lootTiers[tier] || 0) + 1;
+        });
+        lootText = Object.entries(lootTiers)
+            .map(([tier, count]) => {
+                const tierColor = getTierColor(tier);
+                const tierName = getTierName(tier);
+                return `<span style="color:${tierColor}">${tierName}</span> x${count}`;
+            })
+            .join(', ');
+    }
+    
+    // Contar participantes
+    const participantCount = worldState.raidParticipants ? worldState.raidParticipants.length : 0;
+    
+    let msg = `👹 <strong>${boss.name}</strong> — Nivel ${boss.level} ${boss.elementEmoji || ''}<br>`;
     msg += `<em>"${boss.description}"</em><br><br>`;
     msg += `❤️ <strong>Salud:</strong> [${hpBar}] ${boss.currentHp}/${boss.maxHp} (${hpPercent}%)<br>`;
     msg += `⚔️ <strong>Ataque:</strong> ${boss.atk} | 🛡️ <strong>Defensa:</strong> ${boss.def}<br>`;
-    msg += `💎 <strong>Recompensa:</strong> ${boss.goldReward} Cristales<br>`;
-    msg += `✨ <strong>Experiencia:</strong> ${boss.expReward} Esencia<br>`;
-    msg += `🎁 <strong>Drop Chance:</strong> ${(boss.dropChance * 100).toFixed(0)}%<br><br>`;
+    msg += `💎 <strong>Recompensa Base:</strong> ${boss.goldReward} Cristales<br>`;
+    msg += `✨ <strong>Experiencia Base:</strong> ${boss.expReward} Esencia<br>`;
+    msg += `🎁 <strong>Drop Chance:</strong> ${(boss.dropChance * 100).toFixed(0)}%<br>`;
+    msg += `<br>🎒 <strong>LOOT ESPERADO:</strong><br>${lootText || 'No especificado'}<br>`;
+    msg += `<br>👥 <strong>Participantes actuales:</strong> ${participantCount} héroes<br>`;
     msg += `📊 <strong>Jefes derrotados globalmente:</strong> ${worldState.bossDefeatedCount}<br><br>`;
     msg += '<strong>Comandos de Raid:</strong><br>';
     msg += '/raid attack — Atacar al jefe<br>';
-    msg += '/raid info — Ver información detallada<br>';
-    msg += '/raid flee — Huir del raid (pierdes oportunidad de recompensa)';
+    msg += '/raid info — Ver esta información<br>';
+    msg += '/raid flee — Huir del raid (pierdes oportunidad de recompensa)<br>';
+    msg += '<br><em>¡El loot se distribuye según el daño causado!</em>';
     
     addMessage(msg);
 }
@@ -701,6 +723,18 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
             finalDmgToBoss = Math.floor(actualDmgToBoss * boostBuff.value);
         }
         
+        // Registrar participante y su daño
+        if (!worldState.raidParticipants) {
+            worldState.raidParticipants = [];
+        }
+        let participant = worldState.raidParticipants.find(p => p.playerId === myPlayer.id);
+        if (!participant) {
+            participant = { playerId: myPlayer.id, playerName: myPlayer.name, totalDamage: 0, hits: 0 };
+            worldState.raidParticipants.push(participant);
+        }
+        participant.totalDamage += finalDmgToBoss;
+        participant.hits += 1;
+        
         // Aplicar daño
         boss.currentHp -= finalDmgToBoss;
         myPlayer.hp -= actualDmgToPlayer;
@@ -720,12 +754,16 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
         msg += `💥 Contraataque: <strong style="color:#ef4444">${actualDmgToPlayer}</strong> de daño recibido<br>`;
         msg += `<span style="color:#ef4444">━━━━━━━━━━━━━━━━━━━━━━</span><br>`;
         
+        // Mostrar estadísticas del participante
+        msg += `📊 <strong>Tu daño acumulado:</strong> ${participant.totalDamage} (${participant.hits} golpes)<br>`;
+        
         // Verificar muerte del jugador
         if (myPlayer.hp <= 0) {
             myPlayer.hp = 1;
             msg += `<br>☠️ <strong>¡Has sido derrotado!</strong><br>`;
             msg += 'Te has teleportado fuera de la mazmorra con 1 HP.<br>';
-            msg += 'El jefe permanece activo para otros jugadores.';
+            msg += 'El jefe permanece activo para otros jugadores.<br>';
+            msg += '<em>Sin embargo, tu daño acumulado cuenta para el loot si el jefe es derrotado.</em>';
             addMessage(msg);
             saveProgress();
             return;
@@ -736,28 +774,51 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
             // ¡Jefe derrotado!
             worldState.bossDefeatedCount++;
             
-            // Recompensas
-            myPlayer.gold += boss.goldReward;
-            myPlayer.exp += boss.expReward;
+            // Calcular daño total y distribuir recompensas según participación
+            const totalDamage = worldState.raidParticipants.reduce((sum, p) => sum + p.totalDamage, 0);
+            const myContribution = participant.totalDamage / totalDamage; // Porcentaje de contribución (0-1)
+            
+            // Recompensas base proporcionales al daño causado
+            const goldReward = Math.floor(boss.goldReward * myContribution);
+            const expReward = Math.floor(boss.expReward * myContribution);
+            myPlayer.gold += goldReward;
+            myPlayer.exp += expReward;
             
             msg += `<br>🎉 <strong>¡JEFE DERROTADO!</strong><br>`;
-            msg += `💎 +${boss.goldReward} Cristales<br>`;
-            msg += `✨ +${boss.expReward} Esencia<br>`;
+            msg += `📊 <strong>Tu contribución:</strong> ${(myContribution * 100).toFixed(1)}% (${participant.totalDamage}/${totalDamage} daño)<br>`;
+            msg += `💎 +${goldReward} Cristales (base: ${boss.goldReward})<br>`;
+            msg += `✨ +${expReward} Esencia (base: ${boss.expReward})<br>`;
             
-            // Drop de item
-            if (Math.random() < boss.dropChance) {
+            // Sistema de loot basado en contribución y lootTable del boss
+            const hasLootDrop = Math.random() < boss.dropChance;
+            const isTopContributor = myContribution >= 0.3; // Top contributor si hizo >= 30% del daño
+            const participatedEnough = myContribution >= 0.05; // Mínimo 5% para tener chance de loot
+            
+            if (hasLootDrop && participatedEnough && boss.lootTable && boss.lootTable.length > 0) {
+                // Determinar tier de loot basado en contribución
+                let availableTiers = boss.lootTable;
+                let selectedTier;
+                
+                if (isTopContributor) {
+                    // Top contributor tiene acceso a los mejores tiers
+                    const bestTier = availableTiers[0]; // Primer tier es el mejor
+                    selectedTier = bestTier;
+                } else {
+                    // Contribuidores menores reciben tiers inferiores
+                    const lowerTiers = availableTiers.slice(-2); // Últimos 2 tiers (los más bajos)
+                    selectedTier = lowerTiers[Math.floor(Math.random() * lowerTiers.length)];
+                }
+                
+                // Seleccionar item del tier correspondiente
                 const isWeapon = Math.random() < 0.5;
                 const pool = isWeapon ? possibleWeapons : possibleArmors;
-                const filteredPool = pool.filter(item => 
-                    item.tier === boss.tier || 
-                    (item.tier === 'epico' && boss.tier === 'legendario') ||
-                    (item.tier === 'raro' && boss.tier === 'epico')
-                );
+                const filteredPool = pool.filter(item => item.tier === selectedTier);
                 
                 let dropItem;
                 if (filteredPool.length > 0) {
                     dropItem = {...filteredPool[Math.floor(Math.random() * filteredPool.length)]};
                 } else {
+                    // Fallback a cualquier item del pool
                     dropItem = {...pool[Math.floor(Math.random() * pool.length)]};
                 }
                 
@@ -767,7 +828,7 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
                 // Verificar límite de inventario para drop de jefe
                 if (myPlayer.inventory.length >= MAX_INVENTORY_SIZE) {
                     msg += `<br>🎒 <strong>¡Mochila llena!</strong><br>`;
-                    msg += `Perdiste el item legendario por no tener espacio.`;
+                    msg += `Perdiste el item ${getTierName(selectedTier)} por no tener espacio.`;
                 } else {
                     myPlayer.inventory.push(dropItem);
                     const tierColor = getTierColor(dropItem.tier);
@@ -776,22 +837,26 @@ function processBossRaid(cmd, addMessage, safeSendUpdate, isWebxdc) {
                     const type = dropItem.atk !== undefined ? '⚔️' : '🛡️';
                     const bonus = dropItem.atk !== undefined ? `+${dropItem.atk} Ataque` : `+${dropItem.def} Defensa`;
                     
-                    msg += `<br>🎁 <strong>¡DROP LEGENDARIO!</strong><br>`;
+                    const contributorBadge = isTopContributor ? '🏆 <strong>TOP CONTRIBUTOR!</strong><br>' : '';
+                    msg += `<br>${contributorBadge}🎁 <strong>¡DROP OBTENIDO!</strong><br>`;
                     msg += `${icon} <span style="color:${tierColor}">${type} ${dropItem.name}</span> [${tierName}] ${dropItem.elementEmoji} - ${bonus}`;
                 }
+            } else if (!participatedEnough) {
+                msg += `<br><em>⚠️ Tu contribución fue muy baja para recibir loot (mínimo 5%).</em>`;
             }
             
             // Notificación mundial
             if (isWebxdc) {
                 safeSendUpdate(
-                    { type: 'boss_defeated', boss: boss.name, player: myPlayer.name, level: boss.level },
+                    { type: 'boss_defeated', boss: boss.name, player: myPlayer.name, level: boss.level, contribution: myContribution },
                     `${myPlayer.name} derrotó a ${boss.name}`,
                     `👹 Jefe derrotado!`
                 );
             }
             
-            // Limpiar jefe
+            // Limpiar jefe y participantes
             worldState.currentBoss = null;
+            worldState.raidParticipants = [];
             
             // Check level up
             if (myPlayer.exp >= myPlayer.expMax) {
@@ -850,12 +915,33 @@ function spawnBoss(addMessage, safeSendUpdate, isWebxdc) {
     boss.maxHp = boss.hp;
     
     worldState.currentBoss = boss;
+    worldState.raidParticipants = []; // Resetear participantes para nuevo boss
+    
+    // Calcular información del loot para la notificación
+    let lootPreview = '';
+    if (boss.lootTable && boss.lootTable.length > 0) {
+        const lootTiers = {};
+        boss.lootTable.forEach(tier => {
+            lootTiers[tier] = (lootTiers[tier] || 0) + 1;
+        });
+        lootPreview = Object.entries(lootTiers)
+            .map(([tier, count]) => {
+                const tierName = getTierName(tier);
+                return `${tierName} x${count}`;
+            })
+            .join(', ');
+    }
     
     addMessage(`🚨 <strong>¡ALERTA MUNDIAL!</strong><br>` +
               `👹 <strong>${boss.name}</strong> ha aparecido en las mazmorras!<br>` +
               `<em>"${boss.description}"</em><br><br>` +
+              `❤️ <strong>Salud:</strong> ${boss.hp} HP | ⚔️ <strong>Ataque:</strong> ${boss.atk}<br>` +
+              `💎 <strong>Recompensa Base:</strong> ${boss.goldReward} Cristales<br>` +
+              `✨ <strong>Experiencia Base:</strong> ${boss.expReward} Esencia<br>` +
+              `🎒 <strong>Loot Esperado:</strong> ${lootPreview}<br><br>` +
               `Nivel requerido: ${Math.max(1, boss.level - 5)}+<br>` +
-              `Usa /boss para ver detalles y /raid attack para combatir.`);
+              `Usa /boss para ver detalles y /raid attack para combatir.<br>` +
+              `<em>¡El loot se distribuye según el daño causado!</em>`);
     
     if (isWebxdc) {
         safeSendUpdate(
