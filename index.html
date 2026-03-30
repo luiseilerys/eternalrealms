@@ -153,6 +153,13 @@
         <button class="quick-btn" onclick="quickCommand('/equip')">/equip</button>
         <button class="quick-btn" onclick="quickCommand('/world')">/world</button>
         <button class="quick-btn" onclick="quickCommand('/help')">/help</button>
+        <button class="quick-btn" onclick="quickCommand('/achievements')">🏆</button>
+        <button class="quick-btn" onclick="quickCommand('/guild')">⚔️</button>
+        <button class="quick-btn" onclick="quickCommand('/arena')">🏟️</button>
+        <button class="quick-btn" onclick="quickCommand('/events')">🌟</button>
+        <button class="quick-btn" onclick="quickCommand('/companion')">🐾</button>
+        <button class="quick-btn" onclick="quickCommand('/craft')">🔨</button>
+        <button class="quick-btn" onclick="quickCommand('/leaderboard')">📊</button>
     </div>
 
     <div class="input-bar">
@@ -221,7 +228,34 @@
             maxHp: 10,
             weapon: { name: "Bastón de Novato", atk: 0, tier: "comun", minLevel: 1 },
             armor: { name: "Túnica Gastada", def: 0, tier: "comun", minLevel: 1 },
-            inventory: []
+            inventory: [],
+            // 🆕 NUEVAS PROPIEDADES
+            region: "Bosques Etéreos",
+            companion: null,
+            materials: {},
+            consumables: [],
+            activeEffects: [],
+            dailyProgress: {
+                questsCompleted: 0,
+                dungeonsCompleted: 0,
+                itemsFound: 0,
+                restsDone: 0,
+                merchantPurchases: 0,
+                milestonesReached: 0,
+                completedToday: []
+            },
+            stats: {
+                totalQuests: 0,
+                totalDungeons: 0,
+                totalRests: 0,
+                totalMerchantVisits: 0,
+                totalItemsCrafted: 0,
+                bossesDefeated: 0,
+                playTimeMinutes: 0
+            },
+            cooldowns: {
+                ability: 0
+            }
         };
 
         let worldState = {
@@ -234,6 +268,12 @@
         let gameStarted = false;
         let currentMerchant = null;
         const realms = ["Aetherion", "Sylvandar", "Obsidian Reach", "Celestara", "Emberforge"];
+        
+        // 🆕 NUEVAS VARIABLES DE ESTADO
+        let currentRegion = regions[0];
+        let activeEvent = null;
+        let eventTimer = null;
+        let dailyQuestActive = null;
 
         const tierConfig = {
             comun: { name: "Común", color: "#94a3b8", mult: 1.0 },
@@ -276,6 +316,129 @@
             { name: "Armadura de los Dioses", def: 65, tier: "legendario", minLevel: 35, price: 2700 },
             { name: "Túnica del Archimago", def: 70, tier: "legendario", minLevel: 40, price: 3200 },
             { name: "Coraza del Dragón Anciano", def: 80, tier: "legendario", minLevel: 50, price: 4000 }
+        ];
+
+        // 🆕 SISTEMA DE REGIONES
+        const regions = [
+            { name: "Bosques Etéreos", minLevel: 1, difficulty: 1, desc: "Tierras tranquilas con hierbas luminosas" },
+            { name: "Ruinas Ancestrales", minLevel: 3, difficulty: 1.5, desc: "Antiguas estructuras llenas de peligros" },
+            { name: "Cuevas de Cristal", minLevel: 5, difficulty: 2, desc: "Cavernas con cristales energéticos" },
+            { name: "Montañas del Trueno", minLevel: 10, difficulty: 3, desc: "Picos tormentosos con bestias eléctricas" },
+            { name: "Valle Sombrío", minLevel: 15, difficulty: 4, desc: "Tierras corruptas por magia oscura" },
+            { name: "Templo del Vacío", minLevel: 20, difficulty: 5, desc: "Antiguo templo de poder ilimitado" },
+            { name: "Dominio del Dragón", minLevel: 30, difficulty: 7, desc: "Territorio de dragones ancestrales" },
+            { name: "Reino Celestial", minLevel: 40, difficulty: 10, desc: "Plano dimensional de los dioses" }
+        ];
+
+        // 🆕 HABILIDADES POR CLASE
+        const classAbilities = {
+            "Arcane Weaver": {
+                name: "Convergencia Arcana",
+                damage: 2.5,
+                manaCost: 8,
+                cooldown: 3,
+                desc: "Canaliza energía pura para daño masivo"
+            },
+            "Shadowblade": {
+                name: "Golpe Sombrío",
+                damage: 3.0,
+                manaCost: 6,
+                cooldown: 2,
+                desc: "Ataque crítico desde las sombras"
+            },
+            "Stormcaller": {
+                name: "Furia del Trueno",
+                damage: 2.2,
+                manaCost: 10,
+                cooldown: 4,
+                desc: "Invoca rayos para dañar múltiples veces"
+            },
+            "Verdant Warden": {
+                name: "Bendición Natural",
+                heal: 0.4,
+                manaCost: 7,
+                cooldown: 3,
+                desc: "Regenera vida usando energía natural"
+            },
+            "Rune Knight": {
+                name: "Escudo Rúnico",
+                shield: 0.5,
+                manaCost: 9,
+                cooldown: 4,
+                desc: "Crea una barrera protectora"
+            }
+        };
+
+        // 🆕 MASCOTAS / COMPANIONS
+        const companions = [
+            { name: "Espíritu del Bosque", type: "spirit", bonus: "exp", value: 0.1, minLevel: 5, price: 500 },
+            { name: "Dragón Bebè", type: "dragon", bonus: "gold", value: 0.15, minLevel: 10, price: 1000 },
+            { name: "Golem de Cristal", type: "golem", bonus: "def", value: 5, minLevel: 15, price: 1500 },
+            { name: "Fénix Menor", type: "phoenix", bonus: "hp_regen", value: 0.05, minLevel: 20, price: 2000 },
+            { name: "Elemental de Vacío", type: "void", bonus: "atk", value: 8, minLevel: 25, price: 3000 },
+            { name: "Ángel Caído", type: "angel", bonus: "all", value: 0.05, minLevel: 35, price: 5000 }
+        ];
+
+        // 🆕 MISIONES DIARIAS
+        const dailyQuests = [
+            { id: "explorer", name: "Explorador", desc: "Completa 5 quests", target: 5, rewardExp: 200, rewardGold: 50 },
+            { id: "warrior", name: "Guerrero", desc: "Derrota 3 enemigos en mazmorras", target: 3, rewardExp: 300, rewardGold: 75 },
+            { id: "collector", name: "Coleccionista", desc: "Encuentra 2 ítems", target: 2, rewardExp: 150, rewardGold: 100 },
+            { id: "survivor", name: "Superviviente", desc: "Descansa 2 veces", target: 2, rewardExp: 100, rewardGold: 30 },
+            { id: "merchant", name: "Comerciante", desc: "Compra 1 ítem del mercader", target: 1, rewardExp: 250, rewardGold: 0 },
+            { id: "champion", name: "Campeón", desc: "Alcanza nivel 5+ hoy", target: 1, rewardExp: 500, rewardGold: 150 }
+        ];
+
+        // 🆕 MATERIALES PARA CRAFTEO
+        const craftingMaterials = [
+            { name: "Esencia Luminosa", tier: "comun", dropRate: 0.3 },
+            { name: "Cristal de Maná", tier: "poco-comun", dropRate: 0.15 },
+            { name: "Runa Antigua", tier: "raro", dropRate: 0.08 },
+            { name: "Núcleo Elemental", tier: "epico", dropRate: 0.03 },
+            { name: "Fragmento Divino", tier: "legendario", dropRate: 0.01 }
+        ];
+
+        // 🆕 RECETAS DE CRAFTEO
+        const craftingRecipes = [
+            { 
+                name: "Poción de Fuerza", 
+                type: "consumable", 
+                effect: "atk_boost", 
+                value: 5, 
+                duration: 5,
+                materials: [{ name: "Esencia Luminosa", qty: 3 }, { name: "Cristal de Maná", qty: 1 }] 
+            },
+            { 
+                name: "Elixir de Defensa", 
+                type: "consumable", 
+                effect: "def_boost", 
+                value: 5, 
+                duration: 5,
+                materials: [{ name: "Esencia Luminosa", qty: 2 }, { name: "Runa Antigua", qty: 1 }] 
+            },
+            { 
+                name: "Amuleto de Protección", 
+                type: "accessory", 
+                def: 15, 
+                tier: "raro",
+                materials: [{ name: "Cristal de Maná", qty: 5 }, { name: "Runa Antigua", qty: 3 }, { name: "Núcleo Elemental", qty: 1 }] 
+            },
+            { 
+                name: "Anillo de Poder", 
+                type: "accessory", 
+                atk: 12, 
+                tier: "epico",
+                materials: [{ name: "Runa Antigua", qty: 5 }, { name: "Núcleo Elemental", qty: 3 }, { name: "Fragmento Divino", qty: 1 }] 
+            }
+        ];
+
+        // 🆕 EVENTOS ALEATORIOS
+        const randomEvents = [
+            { name: "Lluvia de Meteoritos", effect: "double_exp", duration: 3, chance: 0.05 },
+            { name: "Bendición del Mercader", effect: "discount", value: 0.3, duration: 5, chance: 0.03 },
+            { name: "Invasión Demoníaca", effect: "hard_mode", multiplier: 2, chance: 0.02 },
+            { name: "Festival del Reino", effect: "free_rest", duration: 2, chance: 0.04 },
+            { name: "Aparición Mística", effect: "free_item", chance: 0.01 }
         ];
 
         const questFlavors = [
@@ -338,10 +501,39 @@
                 maxHp: 10,
                 weapon: { name: "Bastón de Novato", atk: 0, tier: "comun", minLevel: 1 },
                 armor: { name: "Túnica Gastada", def: 0, tier: "comun", minLevel: 1 },
-                inventory: []
+                inventory: [],
+                region: "Bosques Etéreos",
+                companion: null,
+                materials: {},
+                consumables: [],
+                activeEffects: [],
+                dailyProgress: {
+                    questsCompleted: 0,
+                    dungeonsCompleted: 0,
+                    itemsFound: 0,
+                    restsDone: 0,
+                    merchantPurchases: 0,
+                    milestonesReached: 0,
+                    completedToday: []
+                },
+                stats: {
+                    totalQuests: 0,
+                    totalDungeons: 0,
+                    totalRests: 0,
+                    totalMerchantVisits: 0,
+                    totalItemsCrafted: 0,
+                    bossesDefeated: 0,
+                    playTimeMinutes: 0
+                },
+                cooldowns: {
+                    ability: 0
+                }
             };
             localStorage.removeItem('eternalRealmsPlayer');
-            currentMerchant = null;        }
+            currentMerchant = null;
+            currentRegion = regions[0];
+            activeEvent = null;
+        }
 
         function calculateStats() {
             myPlayer.atk = 1 + (myPlayer.level - 1) * 0.6 + myPlayer.weapon.atk;
@@ -442,6 +634,386 @@
             });            
             msg += '<br>Escribe <strong>/buy N</strong> para comprar un ítem (ej: /buy 1)';
             addMessage(msg);
+        }
+
+        // 🆕 NUEVAS FUNCIONES DEL SISTEMA EXPANDIDO
+        
+        // Mostrar región actual y eventos
+        function showRegion() {
+            let msg = `🗺️ <strong>Región Actual: ${currentRegion.name}</strong><br>`;
+            msg += `<em>${currentRegion.desc}</em><br><br>`;
+            msg += `📊 Dificultad: ${'⭐'.repeat(Math.floor(currentRegion.difficulty))}<br>`;
+            msg += `🎯 Nivel recomendado: ${currentRegion.minLevel}+<br><br>`;
+            
+            if (activeEvent) {
+                msg += `⚠️ <strong>Evento Activo:</strong> ${activeEvent.name}<br>`;
+                msg += `<em>${getEventDescription(activeEvent.effect)}</em><br>`;
+            } else {
+                msg += '✨ No hay eventos activos en esta región.';
+            }
+            
+            msg += '<br><br><strong>Regiones disponibles:</strong><br>';
+            regions.forEach(r => {
+                const unlocked = myPlayer.level >= r.minLevel;
+                const selected = r.name === currentRegion.name;
+                const icon = selected ? '📍' : (unlocked ? '✅' : '🔒');
+                const style = selected ? 'color:#a78bfa;font-weight:bold;' : (unlocked ? '' : 'color:#64748b;');
+                msg += `${icon} <span style="${style}">${r.name}</span> (Nvl ${r.minLevel}+)<br>`;
+            });
+            
+            msg += '<br><em>Usa /travel [nombre] para cambiar de región</em>';
+            addMessage(msg);
+        }
+        
+        function getEventDescription(effect) {
+            const descriptions = {
+                'double_exp': '¡Experiencia duplicada!',
+                'discount': 'Descuento del 30% en mercaderes',
+                'hard_mode': 'Enemigos más fuertes pero mejores recompensas',
+                'free_rest': 'Descansos gratuitos',
+                'free_item': 'Posibilidad de encontrar ítems gratis'
+            };
+            return descriptions[effect] || 'Evento especial activo';
+        }
+        
+        // Viajar entre regiones
+        function travelToRegion(regionName) {
+            const target = regions.find(r => r.name.toLowerCase() === regionName.toLowerCase());
+            
+            if (!target) {
+                addMessage(`❌ Región "${regionName}" no encontrada. Usa /regions para ver las disponibles.`);
+                return;
+            }
+            
+            if (myPlayer.level < target.minLevel) {
+                addMessage(`❌ Nivel insuficiente. Necesitas nivel ${target.minLevel} para viajar a ${target.name}.`);
+                return;
+            }
+            
+            if (target.name === currentRegion.name) {
+                addMessage(`📍 Ya estás en ${target.name}.`);
+                return;
+            }
+            
+            currentRegion = target;
+            myPlayer.region = target.name;
+            addMessage(`🚶 Viajaste a <strong>${target.name}</strong>.<br><em>${target.desc}</em>`);
+            
+            // Posible encuentro aleatorio al viajar
+            if (Math.random() < 0.15) {
+                setTimeout(() => {
+                    triggerRandomEvent();
+                }, 500);
+            }
+            
+            saveProgress();
+        }
+        
+        // Activar evento aleatorio
+        function triggerRandomEvent() {
+            const roll = Math.random();
+            let cumulative = 0;
+            
+            for (const event of randomEvents) {
+                cumulative += event.chance;
+                if (roll <= cumulative) {
+                    activeEvent = event;
+                    addMessage(`⚡ <strong>¡${event.name}!</strong><br><em>${getEventDescription(event.effect)}</em>`);
+                    
+                    // Limpiar evento después de su duración
+                    if (eventTimer) clearTimeout(eventTimer);
+                    eventTimer = setTimeout(() => {
+                        activeEvent = null;
+                        addMessage(`✨ El evento ${event.name} ha terminado.`);
+                    }, event.duration * 60000);
+                    
+                    return;
+                }
+            }
+        }
+        
+        // Mostrar habilidades de clase
+        function showAbilities() {
+            const ability = classAbilities[myPlayer.class];
+            if (!ability) {
+                addMessage('❌ Clase no válida.');
+                return;
+            }
+            
+            let msg = `⚡ <strong>Habilidad de ${myPlayer.class}</strong><br><br>`;
+            msg += `🎯 <strong>${ability.name}</strong><br>`;
+            msg += `<em>${ability.desc}</em><br><br>`;
+            
+            if (ability.damage) {
+                msg += `💥 Daño: ${(ability.damage * 100)}% del ataque base<br>`;
+            }
+            if (ability.heal) {
+                msg += `💚 Curación: ${(ability.heal * 100)}% de vida máxima<br>`;
+            }
+            if (ability.shield) {
+                msg += `🛡️ Escudo: ${(ability.shield * 100)}% de vida máxima<br>`;
+            }
+            
+            msg += `🔮 Costo de maná: ${ability.manaCost}<br>`;
+            msg += `⏱️ Cooldown: ${ability.cooldown} turns<br>`;
+            
+            const ready = myPlayer.cooldowns.ability <= 0 && myPlayer.mana >= ability.manaCost;
+            msg += `<br>${ready ? '✅ <strong>¡Lista para usar!</strong>' : '⏳ En cooldown o maná insuficiente'}`;
+            msg += '<br><br><em>Usa /ability para activarla</em>';
+            
+            addMessage(msg);
+        }
+        
+        // Usar habilidad de clase
+        function useAbility() {
+            const ability = classAbilities[myPlayer.class];
+            if (!ability) return;
+            
+            if (myPlayer.cooldowns.ability > 0) {
+                addMessage(`⏳ Tu habilidad está en cooldown (${myPlayer.cooldowns.ability} turnos restantes).`);
+                return;
+            }
+            
+            if (myPlayer.mana < ability.manaCost) {
+                addMessage(`❌ Maná insuficiente. Necesitas ${ability.manaCost} 🔮.`);
+                return;
+            }
+            
+            myPlayer.mana -= ability.manaCost;
+            myPlayer.cooldowns.ability = ability.cooldown;
+            
+            let msg = `✨ <strong>¡${ability.name}!</strong><br>`;
+            
+            if (ability.damage) {
+                const dmg = Math.floor(myPlayer.atk * ability.damage * currentRegion.difficulty);
+                msg += `💥 Infliges <strong>${dmg}</strong> de daño.<br>`;
+                const expGain = Math.floor(dmg * 0.5);
+                myPlayer.exp += expGain;
+                msg += `✨ +${expGain} Esencia`;
+            }
+            
+            if (ability.heal) {
+                const heal = Math.floor(myPlayer.maxHp * ability.heal);
+                const actualHeal = Math.min(heal, myPlayer.maxHp - myPlayer.hp);
+                myPlayer.hp += actualHeal;
+                msg += `💚 Recuperas <strong>${actualHeal}</strong> de vida.`;
+            }
+            
+            if (ability.shield) {
+                const shield = Math.floor(myPlayer.maxHp * ability.shield);
+                msg += `🛡️ Ganas un escudo de <strong>${shield}</strong> HP temporales.`;
+            }
+            
+            addMessage(msg);
+            checkLevelUp();
+            saveProgress();
+        }
+        
+        // Sistema de crafteo
+        function showCrafting() {
+            let msg = '⚒️ <strong>Crafteo Disponible</strong><br><br>';
+            
+            craftingRecipes.forEach((recipe, i) => {
+                const canCraft = canCraftRecipe(recipe);
+                msg += `${i+1}. <strong>${recipe.name}</strong> (${recipe.type})<br>`;
+                msg += '   Materiales:<br>';
+                recipe.materials.forEach(mat => {
+                    const has = myPlayer.materials[mat.name] || 0;
+                    const ok = has >= mat.qty;
+                    msg += `   - ${mat.name}: ${has}/${mat.qty} ${ok ? '✅' : '❌'}<br>`;
+                });
+                msg += canCraft ? '   <em style="color:#22c55e">✅ Puedes crafter</em>' : '   <em style="color:#ef4444">❌ Faltan materiales</em>';
+                msg += '<br><br>';
+            });
+            
+            msg += '<em>Usa /craft [número] para crear un ítem</em>';
+            addMessage(msg);
+        }
+        
+        function canCraftRecipe(recipe) {
+            for (const mat of recipe.materials) {
+                if ((myPlayer.materials[mat.name] || 0) < mat.qty) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        function craftItem(recipeNum) {
+            const recipe = craftingRecipes[recipeNum - 1];
+            if (!recipe) {
+                addMessage('❌ Receta inválida.');
+                return;
+            }
+            
+            if (!canCraftRecipe(recipe)) {
+                addMessage('❌ No tienes suficientes materiales.');
+                return;
+            }
+            
+            // Consumir materiales
+            for (const mat of recipe.materials) {
+                myPlayer.materials[mat.name] -= mat.qty;
+                if (myPlayer.materials[mat.name] <= 0) {
+                    delete myPlayer.materials[mat.name];
+                }
+            }
+            
+            // Crear ítem
+            if (recipe.type === 'consumable') {
+                myPlayer.consumables.push({ name: recipe.name, effect: recipe.effect, value: recipe.value, duration: recipe.duration });
+                addMessage(`✅ <strong>¡Crafteaste ${recipe.name}!</strong><br>Efecto: ${recipe.effect === 'atk_boost' ? '+' + recipe.value + ' ATK' : '+' + recipe.value + ' DEF'} por ${recipe.duration} turnos.`);
+            } else if (recipe.type === 'accessory') {
+                const newItem = { 
+                    name: recipe.name, 
+                    tier: recipe.tier, 
+                    minLevel: Math.max(1, myPlayer.level),
+                    ...(recipe.atk ? { atk: recipe.atk } : {}),
+                    ...(recipe.def ? { def: recipe.def } : {})
+                };
+                myPlayer.inventory.push(newItem);
+                const tierColor = getTierColor(recipe.tier);
+                addMessage(`✅ <strong>¡Crafteaste ${recipe.name}!</strong><br><span style="color:${tierColor}">${recipe.atk ? '+' + recipe.atk + ' ATK' : '+' + recipe.def + ' DEF'}</span>`);
+            }
+            
+            myPlayer.stats.totalItemsCrafted++;
+            saveProgress();
+        }
+        
+        // Mostrar compañero
+        function showCompanion() {
+            if (!myPlayer.companion) {
+                let msg = '🐾 <strong>No tienes compañero activo</strong><br><br>';
+                msg += 'Los compañeros otorgan bonificaciones pasivas:<br><br>';
+                companions.forEach(c => {
+                    const canBuy = myPlayer.level >= c.minLevel;
+                    const bonusText = getCompanionBonusText(c);
+                    msg += `🔹 ${c.name} (Nvl ${c.minLevel}+) - ${bonusText} - 💎 ${c.price}<br>`;
+                });
+                msg += '<br><em>Usa /buycompanion [número] para adquirir uno</em>';
+                addMessage(msg);
+            } else {
+                const c = myPlayer.companion;
+                const bonusText = getCompanionBonusText(c);
+                let msg = `🐾 <strong>Tu Compañero: ${c.name}</strong><br>`;
+                msg += `<em>${bonusText}</em><br>`;
+                msg += `Tipo: ${c.type} | Bonus: ${c.value * 100}%<br><br>`;
+                msg += '<em>Usa /changecompanion para cambiar tu compañero</em>';
+                addMessage(msg);
+            }
+        }
+        
+        function getCompanionBonusText(companion) {
+            const bonuses = {
+                'exp': '+10% Experiencia',
+                'gold': '+15% Oro',
+                'def': '+5 Defensa',
+                'hp_regen': 'Regenera 5% HP por turno',
+                'atk': '+8 Ataque',
+                'all': '+5% Todas las stats'
+            };
+            return bonuses[companion.bonus] || 'Bonus especial';
+        }
+        
+        function buyCompanion(companionNum) {
+            if (myPlayer.companion) {
+                addMessage('❌ Ya tienes un compañero. Vende el actual primero con /sellcompanion.');
+                return;
+            }
+            
+            const companion = companions[companionNum - 1];
+            if (!companion) {
+                addMessage('❌ Número inválido.');
+                return;
+            }
+            
+            if (myPlayer.level < companion.minLevel) {
+                addMessage(`❌ Nivel insuficiente. Necesitas nivel ${companion.minLevel}.`);
+                return;
+            }
+            
+            if (myPlayer.gold < companion.price) {
+                addMessage(`❌ No tienes suficientes cristales. Necesitas ${companion.price} 💎.`);
+                return;
+            }
+            
+            myPlayer.gold -= companion.price;
+            myPlayer.companion = {...companion};
+            addMessage(`🎉 <strong>¡Adquiriste ${companion.name}!</strong><br>${getCompanionBonusText(companion)}`);
+            saveProgress();
+        }
+        
+        // Misiones diarias
+        function showDailyQuests() {
+            let msg = '📜 <strong>Misiones Diarias</strong><br><br>';
+            
+            dailyQuests.forEach(q => {
+                const completed = myPlayer.dailyProgress.completedToday.includes(q.id);
+                const progress = getDailyQuestProgress(q);
+                msg += `${completed ? '✅' : '⬜'} <strong>${q.name}</strong>: ${q.desc}<br>`;
+                msg += `   Progreso: ${progress}/${q.target}<br>`;
+                msg += `   Recompensa: ✨ ${q.rewardExp} | 💎 ${q.rewardGold}<br><br>`;
+            });
+            
+            msg += '<em>Las misiones se reinician cada 24 horas</em>';
+            addMessage(msg);
+        }
+        
+        function getDailyQuestProgress(quest) {
+            switch(quest.id) {
+                case 'explorer': return myPlayer.dailyProgress.questsCompleted;
+                case 'warrior': return myPlayer.dailyProgress.dungeonsCompleted;
+                case 'collector': return myPlayer.dailyProgress.itemsFound;
+                case 'survivor': return myPlayer.dailyProgress.restsDone;
+                case 'merchant': return myPlayer.dailyProgress.merchantPurchases;
+                case 'champion': return myPlayer.dailyProgress.milestonesReached;
+                default: return 0;
+            }
+        }
+        
+        function checkDailyQuests() {
+            // Verificar si es un nuevo día
+            const today = new Date().toDateString();
+            if (myPlayer.dailyProgress.lastReset !== today) {
+                myPlayer.dailyProgress = {
+                    questsCompleted: 0,
+                    dungeonsCompleted: 0,
+                    itemsFound: 0,
+                    restsDone: 0,
+                    merchantPurchases: 0,
+                    milestonesReached: 0,
+                    completedToday: [],
+                    lastReset: today
+                };
+                addMessage('🌅 <strong>¡Nuevo día!</strong> Las misiones diarias han sido reiniciadas.');
+            }
+        }
+        
+        function claimDailyReward(questId) {
+            const quest = dailyQuests.find(q => q.id === questId);
+            if (!quest) {
+                addMessage('❌ Misión inválida.');
+                return;
+            }
+            
+            if (myPlayer.dailyProgress.completedToday.includes(questId)) {
+                addMessage('❌ Ya reclamaste esta recompensa hoy.');
+                return;
+            }
+            
+            const progress = getDailyQuestProgress(quest);
+            if (progress < quest.target) {
+                addMessage(`❌ Aún no completaste esta misión. Progreso: ${progress}/${quest.target}`);
+                return;
+            }
+            
+            myPlayer.dailyProgress.completedToday.push(questId);
+            myPlayer.exp += quest.rewardExp;
+            myPlayer.gold += quest.rewardGold;
+            
+            addMessage(`🎁 <strong>¡Recompensa reclamada!</strong><br>✨ +${quest.rewardExp} Esencia | 💎 +${quest.rewardGold} Cristales`);
+            checkLevelUp();
+            saveProgress();
         }
 
         function quickCommand(cmd) {
@@ -680,15 +1252,32 @@
             } 
             else if (lower === '/help') {
                 addMessage('🌠 <strong>Comandos disponibles:</strong><br>' +
+                          '<strong>📊 Básicos:</strong><br>' +
                           '/me — Ver tus estadísticas<br>' +
-                          '/quest — Explorar las tierras (5% drop, 5% mercader)<br>' +
-                          '/dungeon — Entrar en mazmorra (10% drop)<br>' +
+                          '/equip — Ver equipo e inventario<br>' +
+                          '/equip N — Equipar ítem número N<br>' +
                           '/rest — Descansar completamente<br>' +
-                          '/equip — Ver equipo e inventario<br>' +                          '/equip N — Equipar ítem número N<br>' +
-                          '/merchant — Ver mercader actual<br>' +
-                          '/buy N — Comprar ítem del mercader<br>' +
                           '/world — Ver estado global<br>' +
                           '/help — Esta ayuda<br><br>' +
+                          '<strong>⚔️ Combate y Exploración:</strong><br>' +
+                          '/quest — Explorar las tierras (5% drop, 5% mercader)<br>' +
+                          '/dungeon — Entrar en mazmorra (10% drop)<br>' +
+                          '/ability — Usar habilidad de clase<br>' +
+                          '/abilities — Ver habilidades disponibles<br>' +
+                          '/regions — Ver regiones y eventos<br>' +
+                          '/travel [nombre] — Viajar a otra región<br><br>' +
+                          '<strong>🏪 Economía:</strong><br>' +
+                          '/merchant — Ver mercader actual<br>' +
+                          '/buy N — Comprar ítem del mercader<br>' +
+                          '/crafting — Ver recetas de crafteo<br>' +
+                          '/craft N — Crear un ítem<br>' +
+                          '/companion — Ver compañeros disponibles<br>' +
+                          '/buycompanion N — Adquirir compañero<br><br>' +
+                          '<strong>📜 Misiones:</strong><br>' +
+                          '/daily — Ver misiones diarias<br>' +
+                          '/claim [id] — Reclamar recompensa diaria<br><br>' +
+                          '<strong>⚙️ Sistema:</strong><br>' +
+                          '/reset — Reiniciar personaje<br><br>' +
                           '<strong>Sistema de Tiers:</strong><br>' +
                           '<span style="color:#94a3b8">⚪ Común</span> | ' +
                           '<span style="color:#22c55e">🟢 Poco Común</span> | ' +
@@ -704,9 +1293,120 @@
                 document.getElementById('chat-container').innerHTML = '';
                 addMessage('🌌 El mundo se ha reiniciado. Crea un nuevo guardián.', true);
                 return;
-            } 
+            }
+            // 🆕 NUEVOS COMANDOS
+            else if (lower === '/regions' || lower === '/region') {
+                showRegion();
+                return;
+            }
+            else if (lower.startsWith('/travel ')) {
+                const regionName = lower.replace('/travel ', '').trim();
+                travelToRegion(regionName);
+                return;
+            }
+            else if (lower === '/ability' || lower === '/use') {
+                useAbility();
+                return;
+            }
+            else if (lower === '/abilities' || lower === '/skills') {
+                showAbilities();
+                return;
+            }
+            else if (lower === '/crafting' || lower === '/recipes') {
+                showCrafting();
+                return;
+            }
+            else if (lower.startsWith('/craft ')) {
+                const num = parseInt(lower.split(' ')[1]);
+                craftItem(num);
+                return;
+            }
+            else if (lower === '/companion' || lower === '/companions' || lower === '/pet') {
+                showCompanion();
+                return;
+            }
+            else if (lower.startsWith('/buycompanion ')) {
+                const num = parseInt(lower.split(' ')[1]);
+                buyCompanion(num);
+                return;
+            }
+            else if (lower === '/daily' || lower === '/quests' || lower === '/misiones') {
+                checkDailyQuests();
+                showDailyQuests();
+                return;
+            }
+            else if (lower.startsWith('/claim ')) {
+                const questId = lower.split(' ')[1];
+                claimDailyReward(questId);
+                return;
+            }
+            else if (lower === '/stats') {
+                let msg = '📊 <strong>Estadísticas de Juego</strong><br><br>';
+                msg += `Total Quests: ${myPlayer.stats.totalQuests}<br>`;
+                msg += `Total Mazmorras: ${myPlayer.stats.totalDungeons}<br>`;
+                msg += `Total Descansos: ${myPlayer.stats.totalRests}<br>`;
+                msg += `Visitas al Mercader: ${myPlayer.stats.totalMerchantVisits}<br>`;
+                msg += `Ítems Crafteados: ${myPlayer.stats.totalItemsCrafted}<br>`;
+                msg += `Bosses Derrotados: ${myPlayer.stats.bossesDefeated}<br>`;
+                msg += `Tiempo Jugado: ${myPlayer.stats.playTimeMinutes} min<br>`;
+                addMessage(msg);
+                return;
+            }
+            else if (lower === '/materials') {
+                let msg = '🎒 <strong>Materiales</strong><br><br>';
+                const materials = Object.entries(myPlayer.materials);
+                if (materials.length === 0) {
+                    msg += 'No tienes materiales.';
+                } else {
+                    materials.forEach(([name, qty]) => {
+                        const mat = craftingMaterials.find(m => m.name === name);
+                        const tierColor = mat ? getTierColor(mat.tier) : '#94a3b8';
+                        msg += `<span style="color:${tierColor}">${name}</span>: ${qty}<br>`;
+                    });
+                }
+                addMessage(msg);
+                return;
+            }
+            // 🆕 NUEVOS COMANDOS EXPANDIDOS
+            else if (lower === '/achievements' || lower === '/logros') {
+                showAchievements();
+                return;
+            }
+            else if (lower === '/guild' || lower === '/gremio') {
+                showGuild();
+                return;
+            }
+            else if (lower === '/arena') {
+                enterArena();
+                return;
+            }
+            else if (lower === '/events' || lower === '/eventos') {
+                showEvents();
+                return;
+            }
+            else if (lower === '/leaderboard' || lower === '/clasificacion') {
+                showLeaderboard();
+                return;
+            }
+            else if (lower === '/pvp') {
+                challengePVP();
+                return;
+            }
+            else if (lower === '/raid') {
+                startRaid();
+                return;
+            }
+            else if (lower === '/title' || lower === '/titulo') {
+                showTitles();
+                return;
+            }
+            else if (lower.startsWith('/equipTitle ')) {
+                const titleNum = parseInt(lower.split(' ')[1]);
+                equipTitle(titleNum);
+                return;
+            }
             else {
-                addMessage(`🌫️ Comando recibido: <strong>${cmd}</strong>`);
+                addMessage(`❌ Comando desconocido: <strong>${cmd}</strong><br>Usa /help para ver la lista completa.`);
             }
             
             saveProgress();
@@ -797,6 +1497,254 @@
                 }, 0);
             }
         }
+
+        // 🆕 SISTEMA DE LOGROS / ACHIEVEMENTS
+        const achievementsList = [
+            { id: 'first_blood', name: 'Primera Sangre', desc: 'Derrota tu primer enemigo', condition: (p) => p.stats.totalDungeons >= 1, unlocked: false },
+            { id: 'novice', name: 'Novato', desc: 'Alcanza el nivel 5', condition: (p) => p.level >= 5, unlocked: false },
+            { id: 'adept', name: 'Adepto', desc: 'Alcanza el nivel 15', condition: (p) => p.level >= 15, unlocked: false },
+            { id: 'master', name: 'Maestro', desc: 'Alcanza el nivel 30', condition: (p) => p.level >= 30, unlocked: false },
+            { id: 'legend', name: 'Leyenda', desc: 'Alcanza el nivel 50', condition: (p) => p.level >= 50, unlocked: false },
+            { id: 'collector', name: 'Coleccionista', desc: 'Encuentra 10 ítems', condition: (p) => p.stats.totalQuests >= 10, unlocked: false },
+            { id: 'hoarder', name: 'Acaparador', desc: 'Acumula 5000 cristales', condition: (p) => p.gold >= 5000, unlocked: false },
+            { id: 'gladiator', name: 'Gladiador', desc: 'Gana 10 combates en arena', condition: (p) => p.stats.arenaWins >= 10, unlocked: false },
+            { id: 'raider', name: 'Asaltante', desc: 'Completa 5 raids', condition: (p) => p.stats.raidsCompleted >= 5, unlocked: false },
+            { id: 'boss_slayer', name: 'Matadragones', desc: 'Derrota 25 bosses', condition: (p) => p.stats.bossesDefeated >= 25, unlocked: false },
+            { id: 'merchant_friend', name: 'Amigo del Mercader', desc: 'Realiza 20 compras', condition: (p) => p.stats.totalMerchantVisits >= 20, unlocked: false },
+            { id: 'crafter', name: 'Artesano', desc: 'Craftea 15 ítems', condition: (p) => p.stats.totalItemsCrafted >= 15, unlocked: false },
+            { id: 'explorer', name: 'Explorador', desc: 'Visita todas las regiones', condition: (p) => p.regionsVisited >= 8, unlocked: false },
+            { id: 'companion_lover', name: 'Amante de Mascotas', desc: 'Consigue 3 compañeros', condition: (p) => p.companionsOwned >= 3, unlocked: false },
+            { id: 'daily_dedication', name: 'Dedicación Diaria', desc: 'Completa 30 misiones diarias', condition: (p) => p.stats.dailyQuestsCompleted >= 30, unlocked: false }
+        ];
+
+        function showAchievements() {
+            let msg = '🏆 <strong>Logros y Títulos</strong><br><br>';
+            let unlockedCount = 0;
+            achievementsList.forEach(ach => {
+                if (ach.unlocked) {
+                    unlockedCount++;
+                    msg += `✅ <span style="color:#a855f7">${ach.name}</span> — ${ach.desc}<br>`;
+                } else if (ach.condition(myPlayer)) {
+                    ach.unlocked = true;
+                    unlockedCount++;
+                    msg += `🎉 <span style="color:#f59e0b">¡NUEVO!</span> <span style="color:#a855f7">${ach.name}</span> — ${ach.desc}<br>`;
+                    if (isWebxdc) {
+                        safeSendUpdate({ type: 'achievement_unlocked', player: myPlayer.name, achievement: ach.name }, `${myPlayer.name} desbloqueó ${ach.name}`, `Logro: ${ach.name}`);
+                    }
+                } else {
+                    msg += `🔒 <span style="color:#64748b">${ach.name}</span> — ${ach.desc}<br>`;
+                }
+            });
+            msg += `<br>📊 Progreso: ${unlockedCount}/${achievementsList.length} logros`;
+            addMessage(msg);
+        }
+
+        function showGuild() {
+            let msg = '⚔️ <strong>Gremio de Guardianes</strong><br><br>';
+            msg += `🏛️ <strong>Tu Gremio:</strong> Sin gremio<br>`;
+            msg += `💎 <strong>Oro del Gremio:</strong> 0<br>`;
+            msg += `👥 <strong>Miembros:</strong> 1/50<br><br>`;
+            msg += '<strong>Comandos disponibles:</strong><br>/createguild [nombre] — Crear un gremio (1000 💎)<br>/joinguild [nombre] — Unirse a un gremio<br>/leaveguild — Abandonar gremio<br>/guildwar — Iniciar guerra de gremios';
+            addMessage(msg);
+        }
+
+        let arenaStreak = 0;
+        let inArena = false;
+
+        function enterArena() {
+            if (myPlayer.stamina < 2) { addMessage('❌ Necesitas al menos 2 de energía para entrar a la Arena.'); return; }
+            myPlayer.stamina -= 2;
+            inArena = true;
+            const opponentLevel = Math.max(1, myPlayer.level + Math.floor(Math.random() * 5) - 2);
+            const opponentAtk = Math.floor(opponentLevel * 2.5 + Math.random() * 10);
+            let playerHitChance = 0.7 + (myPlayer.atk / (opponentAtk + myPlayer.atk)) * 0.3;
+            let playerWon = Math.random() < playerHitChance;
+            
+            if (playerWon) {
+                arenaStreak++;
+                const rewardGold = Math.floor(50 + opponentLevel * 15 + arenaStreak * 10);
+                const rewardExp = Math.floor(80 + opponentLevel * 20 + arenaStreak * 15);
+                myPlayer.gold += rewardGold;
+                myPlayer.exp += rewardExp;
+                myPlayer.stats.arenaWins = (myPlayer.stats.arenaWins || 0) + 1;
+                addMessage(`🏟️ <strong>¡Victoria en la Arena!</strong><br>Derrotaste a tu oponente (Nivel ${opponentLevel})<br>🔥 Racha actual: ${arenaStreak}<br>💎 Recompensa: ${rewardGold} Cristales<br>✨ Experiencia: ${rewardExp}`);
+                if (isWebxdc && arenaStreak >= 3) {
+                    safeSendUpdate({ type: 'arena_victory', player: myPlayer.name, streak: arenaStreak }, `${myPlayer.name} tiene racha de ${arenaStreak} en Arena`, `Racha: ${arenaStreak}`);
+                }
+                if (arenaStreak % 5 === 0) { addMessage(`🎉 ¡Bonus por racha de ${arenaStreak} victorias! +100 💎`); myPlayer.gold += 100; }
+            } else {
+                arenaStreak = 0;
+                myPlayer.hp = Math.max(1, myPlayer.hp - Math.floor(opponentAtk * 0.5));
+                addMessage(`💀 <strong>Derrota en la Arena</strong><br>Fuiste derrotado por un oponente de Nivel ${opponentLevel}<br>Tu racha terminó.`);
+            }
+            inArena = false;
+            checkLevelUp();
+        }
+
+        function checkLevelUp() {
+            while (myPlayer.exp >= myPlayer.expMax) {
+                const newLevel = myPlayer.level + 1;
+                const isMilestone = (newLevel % 5 === 0);
+                myPlayer.level = newLevel;
+                myPlayer.exp = 0;
+                myPlayer.expMax = Math.floor(myPlayer.expMax * 1.55);
+                levelUpStats(isMilestone);
+                const milestoneMsg = isMilestone ? '<br><strong>¡Hito alcanzado!</strong>' : '';
+                addMessage(`🌟 <strong>¡Ascensión!</strong> Nivel ${myPlayer.level} alcanzado ✨${milestoneMsg}`);
+                if (isWebxdc) {
+                    safeSendUpdate({ type: 'level_up', player: myPlayer.name, level: myPlayer.level, milestone: isMilestone }, `${myPlayer.name} alcanzó nivel ${myPlayer.level}`, `Nivel ${myPlayer.level}${isMilestone ? ' ⭐' : ''}`);
+                }
+            }
+        }
+
+        let activeWorldEvents = [];
+
+        function showEvents() {
+            let msg = '🌟 <strong>Eventos Mundiales Activos</strong><br><br>';
+            if (activeWorldEvents.length === 0) {
+                randomEvents.forEach(event => {
+                    if (Math.random() < event.chance * 10) {
+                        activeWorldEvents.push({ ...event, startTime: Date.now(), endTime: Date.now() + (event.duration || 1) * 60 * 1000 });
+                    }
+                });
+            }
+            if (activeWorldEvents.length === 0) {
+                msg += 'No hay eventos activos en este momento.<br>Los eventos aparecen aleatoriamente durante tus aventuras.';
+            } else {
+                activeWorldEvents = activeWorldEvents.filter(e => e.endTime > Date.now());
+                activeWorldEvents.forEach(event => {
+                    const timeLeft = Math.ceil((event.endTime - Date.now()) / 60000);
+                    let effectDesc = '';
+                    switch(event.effect) {
+                        case 'double_exp': effectDesc = '✨ Doble experiencia'; break;
+                        case 'discount': effectDesc = '🏪 30% descuento'; break;
+                        case 'hard_mode': effectDesc = '⚔️ Enemigos más fuertes'; break;
+                        case 'free_rest': effectDesc = '🌙 Descansos gratuitos'; break;
+                        case 'free_item': effectDesc = '🎁 Ítem gratis chance'; break;
+                    }
+                    msg += `🌈 <strong>${event.name}</strong><br>${effectDesc}<br>⏱️ ${timeLeft} min<br><br>`;
+                });
+            }
+            addMessage(msg);
+        }
+
+        function showLeaderboard() {
+            let msg = '📊 <strong>Tabla de Clasificación Global</strong><br><br>';
+            const fakePlayers = [
+                { name: 'ShadowHunter', level: 47, realm: 'Obsidian Reach' },
+                { name: 'ArcaneMaster', level: 45, realm: 'Celestara' },
+                { name: 'StormBringer', level: 42, realm: 'Aetherion' },
+                { name: 'NatureGuard', level: 38, realm: 'Sylvandar' },
+                { name: 'RuneWarrior', level: 35, realm: 'Emberforge' },
+                { name: myPlayer.name, level: myPlayer.level, realm: myPlayer.realm, isPlayer: true }
+            ].sort((a, b) => b.level - a.level);
+            fakePlayers.forEach((p, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                const highlight = p.isPlayer ? 'style="background:#7c3aed; padding:2px 8px; border-radius:6px;"' : '';
+                msg += `${medal} <span ${highlight}>${p.name}</span> — Nivel ${p.level} (${p.realm})<br>`;
+            });
+            msg += `<br><strong>Tu posición:</strong> #${fakePlayers.findIndex(p => p.isPlayer) + 1}`;
+            addMessage(msg);
+        }
+
+        function challengePVP() {
+            if (myPlayer.stamina < 5) { addMessage('❌ Necesitas 5 de energía para PvP.'); return; }
+            myPlayer.stamina -= 5;
+            const opponents = ['DragonSlayer99', 'MysticMage', 'NightAssassin', 'HolyPaladin'];
+            const opponent = opponents[Math.floor(Math.random() * opponents.length)];
+            const opponentLevel = Math.max(1, myPlayer.level + Math.floor(Math.random() * 10) - 5);
+            const winChance = 0.4 + (myPlayer.level / (opponentLevel + myPlayer.level)) * 0.4;
+            const won = Math.random() < winChance;
+            
+            if (won) {
+                const rewardGold = Math.floor(200 + opponentLevel * 25);
+                const rewardExp = Math.floor(300 + opponentLevel * 40);
+                const trophy = Math.floor(Math.random() * 3) + 1;
+                myPlayer.gold += rewardGold;
+                myPlayer.exp += rewardExp;
+                myPlayer.stats.pvpWins = (myPlayer.stats.pvpWins || 0) + 1;
+                myPlayer.pvpTrophies = (myPlayer.pvpTrophies || 0) + trophy;
+                addMessage(`⚔️ <strong>¡Victoria PvP!</strong><br>Derrotaste a ${opponent} (Nvl ${opponentLevel})<br>💎 ${rewardGold} • ✨ ${rewardExp} • 🏆 +${trophy}`);
+            } else {
+                const penaltyGold = Math.floor(myPlayer.gold * 0.05);
+                myPlayer.gold = Math.max(0, myPlayer.gold - penaltyGold);
+                myPlayer.stats.pvpLosses = (myPlayer.stats.pvpLosses || 0) + 1;
+                addMessage(`💀 <strong>Derrota PvP</strong><br>Derrotado por ${opponent}<br>Penalización: ${penaltyGold} 💎`);
+            }
+            checkLevelUp();
+        }
+
+        function startRaid() {
+            if (myPlayer.stamina < 10) { addMessage('❌ Necesitas 10 de energía para una Raid.'); return; }
+            if (myPlayer.level < 20) { addMessage('❌ Necesitas nivel 20 mínimo para Raids.'); return; }
+            myPlayer.stamina -= 10;
+            const raidBosses = [
+                { name: 'Dragón Ancestral', hp: 500, atk: 45, exp: 1000, gold: 500 },
+                { name: 'Rey Demoníaco', hp: 600, atk: 50, exp: 1200, gold: 600 },
+                { name: 'Titán de Hielo', hp: 700, atk: 40, exp: 1400, gold: 700 },
+                { name: 'Fénix Eterno', hp: 650, atk: 48, exp: 1300, gold: 650 }
+            ];
+            const boss = raidBosses[Math.floor(Math.random() * raidBosses.length)];
+            const playerPower = myPlayer.atk + myPlayer.def + (myPlayer.level * 3);
+            const bossPower = boss.atk + (boss.hp / 10);
+            const winChance = Math.min(0.9, Math.max(0.2, 0.5 + (playerPower - bossPower) / 50));
+            
+            if (Math.random() < winChance) {
+                myPlayer.gold += boss.gold;
+                myPlayer.exp += boss.exp;
+                myPlayer.stats.bossesDefeated += 1;
+                myPlayer.stats.raidsCompleted = (myPlayer.stats.raidsCompleted || 0) + 1;
+                if (Math.random() < 0.3) {
+                    const pool = Math.random() < 0.5 ? possibleWeapons : possibleArmors;
+                    const filteredPool = pool.filter(item => item.tier !== 'comun' && item.minLevel <= myPlayer.level + 5);
+                    if (filteredPool.length > 0) {
+                        const item = {...filteredPool[Math.floor(Math.random() * filteredPool.length)]};
+                        myPlayer.inventory.push(item);
+                        addMessage(`🎁 ¡Drop! ${item.name}`);
+                    }
+                }
+                addMessage(`⚔️ <strong>¡Raid Completada!</strong><br>${boss.name} derrotado<br>💎 ${boss.gold} • ✨ ${boss.exp}`);
+                if (isWebxdc) {
+                    safeSendUpdate({ type: 'raid_complete', player: myPlayer.name, boss: boss.name }, `${myPlayer.name} derrotó a ${boss.name}`, `Raid: ${boss.name}`);
+                }
+            } else {
+                myPlayer.hp = Math.max(1, myPlayer.hp - Math.floor(myPlayer.maxHp * 0.5));
+                addMessage(`💀 <strong>Raid Fallida</strong><br>${boss.name} te derrotó`);
+            }
+            checkLevelUp();
+        }
+
+        const titlesList = [
+            { id: 'novice_guardian', name: 'Guardián Novato', requirement: 'Nivel 5', minLevel: 5 },
+            { id: 'brave_warrior', name: 'Guerrero Valiente', requirement: '10 Victorias Arena', minLevel: 10 },
+            { id: 'treasure_hunter', name: 'Cazatesoros', requirement: '5000 Cristales', minLevel: 15 },
+            { id: 'dragon_slayer', name: 'Matadragones', requirement: '10 Bosses', minLevel: 25 },
+            { id: 'arena_champion', name: 'Campeón de Arena', requirement: 'Racha 10', minLevel: 30 },
+            { id: 'legendary_hero', name: 'Héroe Legendario', requirement: 'Nivel 50', minLevel: 50 }
+        ];
+
+        function showTitles() {
+            let msg = '🎖️ <strong>Títulos Disponibles</strong><br><br>';
+            titlesList.forEach((title, i) => {
+                const canUnlock = myPlayer.level >= title.minLevel;
+                const isEquipped = myPlayer.equippedTitle === title.id;
+                if (isEquipped) { msg += `👑 <span style="color:#f59e0b">${title.name}</span> [EQUIPADO]<br>`; }
+                else if (canUnlock) { msg += `✅ ${title.name} — ${title.requirement}<br>`; }
+                else { msg += `🔒 ${title.name} — ${title.requirement}<br>`; }
+            });
+            msg += '<br>/equipTitle [número] para equipar';
+            addMessage(msg);
+        }
+
+        function equipTitle(titleNum) {
+            if (isNaN(titleNum) || titleNum < 1 || titleNum > titlesList.length) { addMessage('❌ Número inválido.'); return; }
+            const title = titlesList[titleNum - 1];
+            if (myPlayer.level < title.minLevel) { addMessage(`❌ Necesitas nivel ${title.minLevel}.`); return; }
+            myPlayer.equippedTitle = title.id;
+            calculateStats();
+            addMessage(`👑 Título equipado: ${title.name}`);
+        }
+
 
         window.onload = () => {
             createRealmButtons();
