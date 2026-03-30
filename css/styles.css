@@ -57,6 +57,7 @@ body {
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-start;
+    overflow-x: auto;
 }
 
 .quick-btn {
@@ -65,16 +66,34 @@ body {
     border: none;
     padding: 10px 16px;
     border-radius: 9999px;
-    font-size: 13.5px;
+    font-size: 13px;
     cursor: pointer;
     white-space: nowrap;
     min-width: 60px;
     flex-shrink: 0;
+    transition: all 0.2s ease;
 }
 
 .quick-btn:hover, .quick-btn:active { 
     background: #a78bfa; 
     color: white; 
+    transform: translateY(-2px);
+}
+
+/* Botones de raid con estilo especial */
+.quick-btn:nth-child(4),
+.quick-btn:nth-child(5),
+.quick-btn:nth-child(6) {
+    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+    color: white;
+    font-weight: 600;
+}
+
+.quick-btn:nth-child(4):hover,
+.quick-btn:nth-child(5):hover,
+.quick-btn:nth-child(6):hover {
+    background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
 }
 
 .input-bar {
